@@ -1,0 +1,23 @@
+/* Design tokens from ADR-0007 (visual direction: match center). */
+:root {
+  --color-bg: #f4f6fa;
+  --color-surface: #ffffff;
+  --color-ink: #0d1a3a;
+  --color-ink-muted: #49567a;
+  --color-panel: #0d1a3a;
+  --color-panel-raised: #16285a;
+  --color-on-panel-muted: #c3cce2;
+  --color-accent: #2bd0b8;
+  --color-unread: #b23a28;
+  --color-unread-soft: #ff8a73;
+  --color-border: #e3e8f2;
+
+  --font-body: 'IBM Plex Sans JP', 'Hiragino Sans', system-ui, sans-serif;
+  --font-score: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --tap-target: 44px;
+}
