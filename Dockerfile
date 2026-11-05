@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # Production image: nginx serves the app and forwards /api to the API on the same origin.
-FROM nginxinc/nginx-unprivileged:1.28-alpine AS prod
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS prod
 ENV API_UPSTREAM=http://api:8000
 COPY deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/default.conf.template /etc/nginx/templates/default.conf.template
