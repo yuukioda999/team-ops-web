@@ -21,9 +21,13 @@ span {
   word-break: auto-phrase;
 }
 
+/* Navy on light surfaces and turquoise on the navy panel: both 3:1 or more (WCAG 1.4.11) */
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-ink);
   outline-offset: 2px;
+}
+.panel :focus-visible {
+  outline-color: var(--color-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,51 @@
+# Production web server: static files plus /api forwarded to team-ops-api on the same origin,
+# so the Sanctum session cookie works (ADR-0008). ${API_UPSTREAM} is filled in at container start.
+
+# Log the path only: no query string and no Referer, because mail links carry a one-time token
+# in the query string and the next request's Referer still contains it (plan.md D7).
+log_format path_only '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent $request_time';
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+    access_log /dev/stdout path_only;
+
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        # Overwrite (do not append) so a client cannot forge its IP for the API's rate limits
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Pages opened from mail links carry a one-time token in the query string.
+    # Not logged at all (plan.md D7); the app also removes the token from the URL.
+    location = /login/verify {
+        access_log off;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store";
+        try_files /index.html =404;
+    }
+    location = /settings/email/verify {
+        access_log off;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-store";
+        try_files /index.html =404;
+    }
+
+    # Client-side routes (/login, /teams/...) all load the app
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache";
+        try_files $uri /index.html;
+    }
+}
