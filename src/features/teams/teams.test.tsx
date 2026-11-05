@@ -13,7 +13,7 @@ describe('チームに所属していない人', () => {
     expect(await screen.findByRole('heading', { name: 'チームを用意しましょう' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'チームを作成する' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'チームを作成する' })).toHaveAttribute('href', '/teams/new')
-    expect(screen.getByRole('heading', { name: '招待から参加する' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '招待リンクから参加する' })).toBeInTheDocument()
   })
 })
 
@@ -83,6 +83,23 @@ describe('チームの切り替え', () => {
     await userEvent.click(within(menu).getByRole('link', { name: /U-10/ }))
 
     expect(await screen.findByRole('heading', { name: 'あおば台FC U-10', level: 1 })).toBeInTheDocument()
+  })
+
+  it('AC-001-13 the menu closes with Escape and focus returns to the button', async () => {
+    renderAt(`/teams/${U12.id}`, {
+      'GET /api/me': signedIn({ teams: [U10, U12] }),
+      [`GET /api/teams/${U12.id}`]: { status: 200, body: U12 },
+    })
+
+    const button = await screen.findByRole('button', { name: 'チームを切り替える' })
+    await userEvent.click(button)
+    expect(screen.getByRole('navigation', { name: '所属しているチーム' })).toBeInTheDocument()
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(screen.queryByRole('navigation', { name: '所属しているチーム' })).not.toBeInTheDocument()
+    expect(button).toHaveFocus()
+    expect(button).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('AC-001-13 the home page opens the first team', async () => {

@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, errorMessage, fieldErrors, withCsrfRetry } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { TextField } from '../../components/TextField.tsx'
+import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { useMe, useSession } from './session-context.ts'
 
 /** アカウント設定:表示名の変更、メールアドレスの変更、ログアウト(AC-001-06・08・09)。 */
@@ -22,6 +23,10 @@ export function SettingsPage() {
 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'name' | 'email' | 'logout' | null>(null)
+  const nameForm = useRef<HTMLFormElement>(null)
+  const emailForm = useRef<HTMLFormElement>(null)
+  useFocusFirstInvalid(nameForm, nameError)
+  useFocusFirstInvalid(emailForm, emailError)
 
   async function saveName(event: FormEvent) {
     event.preventDefault()
@@ -73,11 +78,11 @@ export function SettingsPage() {
   }
 
   return (
-    <PageFrame title="アカウント設定" signedInAs={me.email}>
+    <PageFrame title="アカウント設定" pageTitle="アカウント設定" signedInAs={me.email}>
       <h1 className="visually-hidden">アカウント設定</h1>
       {error !== null && <Alert tone="error">{error}</Alert>}
 
-      <form className="sheet" onSubmit={(e) => void saveName(e)} noValidate aria-labelledby="name-title">
+      <form ref={nameForm} className="sheet" onSubmit={(e) => void saveName(e)} noValidate aria-labelledby="name-title">
         <h2 id="name-title" className="sheet__title">
           表示名の変更
         </h2>
@@ -100,7 +105,7 @@ export function SettingsPage() {
         </button>
       </form>
 
-      <form className="sheet" onSubmit={(e) => void requestEmailChange(e)} noValidate aria-labelledby="email-title">
+      <form ref={emailForm} className="sheet" onSubmit={(e) => void requestEmailChange(e)} noValidate aria-labelledby="email-title">
         <h2 id="email-title" className="sheet__title">
           メールアドレスの変更
         </h2>

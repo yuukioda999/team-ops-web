@@ -13,11 +13,35 @@ describe('ログイン用リンクの要求', () => {
     await userEvent.type(await screen.findByLabelText('メールアドレス'), 'coach@example.invalid')
     await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
 
-    expect(await screen.findByRole('heading', { name: 'メールを確認してください' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'メールを送信しました' })).toBeInTheDocument()
     expect(screen.getByText('coach@example.invalid')).toBeInTheDocument()
+    expect(document.title).toBe('メールを送信しました | チーム運営')
     const post = calls.find((c) => c.method === 'POST')
     expect(post?.body).toEqual({ email: 'coach@example.invalid' })
     expect(post?.headers.get('X-XSRF-TOKEN')).toBe('test-xsrf-token')
+  })
+
+  it('AC-001-02 shows the same screen whether or not the address is registered', async () => {
+    renderAt('/login', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links': { status: 202, body: { message: 'メールを送信しました' } },
+    })
+
+    await userEvent.type(await screen.findByLabelText('メールアドレス'), 'nobody@example.invalid')
+    await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
+
+    expect(await screen.findByRole('heading', { name: 'メールを送信しました' })).toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/登録されていません|未登録|見つかりません/)
+  })
+
+  it('shows a message when the network is down instead of staying on "sending"', async () => {
+    renderAt('/login', { 'GET /api/me': signedOut, 'POST /api/auth/login-links': 'network-error' })
+
+    await userEvent.type(await screen.findByLabelText('メールアドレス'), 'coach@example.invalid')
+    await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('通信に失敗しました')
+    expect(screen.getByRole('button', { name: 'ログイン用のリンクを送る' })).toBeEnabled()
   })
 
   it('AC-001-05 shows the wait message when the limit is reached', async () => {
@@ -30,7 +54,7 @@ describe('ログイン用リンクの要求', () => {
     await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('時間をおいてもう一度お試しください')
-    expect(screen.queryByRole('heading', { name: 'メールを確認してください' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'メールを送信しました' })).not.toBeInTheDocument()
   })
 
   it('AC-000-05 shows the field error next to the address', async () => {
@@ -47,6 +71,7 @@ describe('ログイン用リンクの要求', () => {
 
     expect(await screen.findByText('メールアドレスの形式が正しくありません。')).toBeInTheDocument()
     expect(screen.getByLabelText('メールアドレス')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('メールアドレス')).toHaveFocus()
   })
 
   it('AC-001-07 explains that the session ended', async () => {
@@ -62,6 +87,30 @@ describe('メールのリンクからのログイン', () => {
 
     expect(await screen.findByRole('button', { name: 'ログインする' })).toBeInTheDocument()
     expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0)
+  })
+
+  it('D7 removes the token from the address bar but still uses it', async () => {
+    const { router, calls } = renderAt('/login/verify?token=abc', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links/consume': signedIn(),
+    })
+
+    await screen.findByRole('button', { name: 'ログインする' })
+    expect(router.state.location.search).toBe('')
+    await userEvent.click(screen.getByRole('button', { name: 'ログインする' }))
+    await screen.findByRole('heading', { name: 'チームを用意しましょう' })
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ token: 'abc' })
+  })
+
+  it('AC-001-04 a malformed link gets the same message as an expired one', async () => {
+    renderAt('/login/verify?token=abc', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links/consume': { status: 422, body: { message: '入力内容を確認してください', errors: { token: ['x'] } } },
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'ログインする' }))
+
+    expect(await screen.findByRole('heading', { name: 'リンクの有効期限が切れています' })).toBeInTheDocument()
   })
 
   it('AC-001-03 a new user goes on to enter a display name', async () => {
@@ -107,8 +156,9 @@ describe('メールのリンクからのログイン', () => {
     expect(await screen.findByRole('heading', { name: 'リンクの有効期限が切れています' })).toBeInTheDocument()
   })
 
-  it('returns to the page the user wanted after logging in, but only on this site', async () => {
-    renderAt('/login/verify?token=abc&next=%2F%2Fevil.example%2F', {
+  it('AC-000-02 a saved return path to another site is ignored', async () => {
+    sessionStorage.setItem('team-ops:return-to', '//evil.example/')
+    renderAt('/login/verify?token=abc', {
       'GET /api/me': signedOut,
       'POST /api/auth/login-links/consume': signedIn(),
     })

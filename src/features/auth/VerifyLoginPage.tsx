@@ -1,19 +1,20 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { api, errorMessage, withCsrfRetry } from '../../api/client.ts'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
-import { safeNext, useSession } from './session-context.ts'
+import { takeReturnTo } from './return-to.ts'
+import { useSession } from './session-context.ts'
+import { useLinkToken } from './use-link-token.ts'
 
 /**
  * メールのリンクから開く画面。開いただけではログインせず、ボタンを押したときに
  * トークンを使う(ADR-0008:迷惑メール対策の自動確認でリンクが使い切られないように)。
  */
 export function VerifyLoginPage() {
-  const [params] = useSearchParams()
   const navigate = useNavigate()
   const { setMe } = useSession()
-  const token = params.get('token') ?? ''
+  const token = useLinkToken()
   const [failure, setFailure] = useState<string | null>(token === '' ? 'リンクの有効期限が切れています' : null)
   const [busy, setBusy] = useState(false)
 
@@ -25,16 +26,17 @@ export function VerifyLoginPage() {
     setBusy(false)
     if (data !== undefined) {
       setMe(data)
-      const next = safeNext(params.get('next'))
-      navigate(data.needs_display_name ? '/welcome' : (next ?? '/'), { replace: true })
+      // A new user enters a display name first; WelcomePage then goes to the saved page
+      navigate(data.needs_display_name ? '/welcome' : (takeReturnTo() ?? '/'), { replace: true })
       return
     }
-    setFailure(response.status === 410 ? 'リンクの有効期限が切れています' : errorMessage(error))
+    // 410 expired/used, 422 malformed link: the same message (AC-001-04)
+    setFailure(response.status === 410 || response.status === 422 ? 'リンクの有効期限が切れています' : errorMessage(error))
   }
 
   if (failure !== null) {
     return (
-      <PageFrame title="チーム運営">
+      <PageFrame title="チーム運営" pageTitle={failure}>
         <Panel tag="ログイン" title={failure}>
           <p className="panel__text">リンクは送信から15分で無効になり、1回だけ使えます。もう一度ログイン用のリンクを送ってください。</p>
           <Link to="/login" className="button button--accent">
@@ -46,7 +48,7 @@ export function VerifyLoginPage() {
   }
 
   return (
-    <PageFrame title="チーム運営">
+    <PageFrame title="チーム運営" pageTitle="ログインの確認">
       <Panel tag="ログイン" meta="あと1ステップ" title="ログインしますか">
         <p className="panel__text">下のボタンを押すとログインします。このリンクは1回だけ使えます。</p>
         <button type="button" className="button button--accent" onClick={() => void logIn()} disabled={busy}>

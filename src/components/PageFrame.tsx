@@ -3,7 +3,10 @@ import { Link } from 'react-router'
 import { Crest } from './Crest.tsx'
 
 type Props = {
+  /** Shown in the header next to the crest. */
   title: string
+  /** The browser tab title for this page (WCAG 2.4.2). */
+  pageTitle: string
   /** Where the brand links to. */
   home?: string
   /** Shown under the header after login (who is logged in). */
@@ -15,9 +18,10 @@ type Props = {
   children: ReactNode
 }
 
-export function PageFrame({ title, home = '/', signedInAs, account = false, headerExtra, children }: Props) {
+export function PageFrame({ title, pageTitle, home = '/', signedInAs, account = false, headerExtra, children }: Props) {
   return (
     <div className="page">
+      <title>{`${pageTitle} | チーム運営`}</title>
       <header className="topbar">
         <Link to={home} className="topbar__brand">
           <Crest />

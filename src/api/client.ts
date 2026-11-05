@@ -33,9 +33,13 @@ let csrfReady: Promise<void> | null = null
 /** CSRF 対策の Cookie を受け取る。同時に何度呼ばれても、取りに行くのは1回だけ */
 export function ensureCsrfCookie(force = false): Promise<void> {
   if (force || readCookie('XSRF-TOKEN') === null) {
-    csrfReady ??= globalThis.fetch('/api/sanctum/csrf-cookie', { credentials: 'same-origin' }).then(() => {
-      csrfReady = null
-    })
+    // On failure too, forget the attempt so the next request tries again
+    csrfReady ??= globalThis
+      .fetch('/api/sanctum/csrf-cookie', { credentials: 'same-origin' })
+      .then(() => undefined)
+      .finally(() => {
+        csrfReady = null
+      })
     return csrfReady
   }
   return Promise.resolve()
@@ -46,12 +50,32 @@ const csrf: Middleware = {
     if (SAFE_METHODS.has(request.method)) {
       return request
     }
-    await ensureCsrfCookie()
+    try {
+      await ensureCsrfCookie()
+    } catch {
+      // Send without the token: the API answers 419 and withCsrfRetry asks for the cookie again
+    }
     const token = readCookie('XSRF-TOKEN')
     if (token !== null) {
       request.headers.set('X-XSRF-TOKEN', token)
     }
     return request
+  },
+}
+
+/** Shown when the request did not reach the server at all (offline, DNS, server down). */
+export const NETWORK_ERROR_MESSAGE = '通信に失敗しました。電波の良い場所で、もう一度お試しください'
+
+/**
+ * A failed fetch throws; turn it into a normal error response so every screen shows a message
+ * and gets out of its "sending" state instead of hanging.
+ */
+const networkFailure: Middleware = {
+  onError() {
+    return new Response(JSON.stringify({ message: NETWORK_ERROR_MESSAGE }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    })
   },
 }
 
@@ -73,7 +97,7 @@ export const api = createClient<paths>({
   // Look fetch up on each call (not once at startup), so tests can replace it
   fetch: (request) => globalThis.fetch(request),
 })
-api.use(csrf, sessionExpiry)
+api.use(csrf, sessionExpiry, networkFailure)
 
 /**
  * 変更を伴う呼び出しを、CSRF のトークンが古い(419)ときだけ1回やり直す。

@@ -38,7 +38,7 @@
   flex: none;
   width: var(--tap-target);
   height: var(--tap-target);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1.5px solid var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-ink);
@@ -197,7 +197,8 @@
 .field__input {
   min-height: 48px;
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-border-strong);
+  /* 3:1 against white so the field's edge is visible (WCAG 1.4.11) */
+  border: 1.5px solid var(--color-ink-muted);
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 0 14px;
@@ -238,7 +239,7 @@
   position: relative;
   min-height: 48px;
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-border-strong);
+  border: 1.5px solid var(--color-ink-muted);
   background: var(--color-surface);
   display: flex;
   align-items: center;
@@ -260,7 +261,7 @@
   color: var(--color-surface);
 }
 .choice:has(input:focus-visible) {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid var(--color-ink);
   outline-offset: 2px;
 }
 

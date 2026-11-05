@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 import { api, errorMessage, fieldErrors, withCsrfRetry } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { TextField } from '../../components/TextField.tsx'
+import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 
 const APP_NAME = 'チーム運営'
 
@@ -18,6 +19,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
+  const form = useRef<HTMLFormElement>(null)
+  useFocusFirstInvalid(form, emailError)
 
   async function send(event?: FormEvent) {
     event?.preventDefault()
@@ -39,8 +42,8 @@ export function LoginPage() {
 
   if (sentTo !== null) {
     return (
-      <PageFrame title={APP_NAME}>
-        <Panel tag="送信しました" meta="有効期限 15分" title="メールを確認してください">
+      <PageFrame title={APP_NAME} pageTitle="メールを送信しました">
+        <Panel tag="ログイン" meta="有効期限 15分" title="メールを送信しました">
           <p className="panel__text">
             <strong>{sentTo}</strong> にログイン用のリンクを送りました。メールのリンクを開き、表示された画面で「ログインする」を押してください。
           </p>
@@ -63,7 +66,7 @@ export function LoginPage() {
   }
 
   return (
-    <PageFrame title={APP_NAME}>
+    <PageFrame title={APP_NAME} pageTitle="ログイン">
       <Panel tag="ログイン" meta="パスワードは不要です" title="メールアドレスでログイン">
         <p className="panel__text">
           入力したメールアドレスに、ログイン用のリンクを送ります。はじめての方も、同じ手順で登録できます。
@@ -71,7 +74,7 @@ export function LoginPage() {
       </Panel>
       {params.get('expired') === '1' && <Alert tone="info">ログインの有効期限が切れました。もう一度ログインしてください。</Alert>}
       {error !== null && <Alert tone="error">{error}</Alert>}
-      <form className="sheet" onSubmit={(e) => void send(e)} noValidate>
+      <form ref={form} className="sheet" onSubmit={(e) => void send(e)} noValidate>
         <TextField
           label="メールアドレス"
           type="email"

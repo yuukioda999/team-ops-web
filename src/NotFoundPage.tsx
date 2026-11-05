@@ -4,7 +4,7 @@ import { Panel } from './components/Panel.tsx'
 
 export function NotFoundPage() {
   return (
-    <PageFrame title="チーム運営">
+    <PageFrame title="チーム運営" pageTitle="ページが見つかりません">
       <Panel tag="404" title="ページが見つかりません">
         <p className="panel__text">URL が間違っているか、ページが移動した可能性があります。</p>
         <Link to="/" className="button button--accent">

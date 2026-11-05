@@ -8,7 +8,7 @@ export function StartPage() {
   const me = useMe()
 
   return (
-    <PageFrame title="チーム運営" signedInAs={me.email} account>
+    <PageFrame title="チーム運営" pageTitle="チームを用意しましょう" signedInAs={me.email} account>
       <Panel tag="ようこそ" meta={me.display_name ?? undefined} title="チームを用意しましょう">
         <p className="panel__text">まだどのチームにも所属していません。チームを作るか、招待を受けて参加してください。</p>
       </Panel>
@@ -25,7 +25,7 @@ export function StartPage() {
 
       <section className="sheet" aria-labelledby="join-title">
         <h2 id="join-title" className="sheet__title">
-          招待から参加する
+          招待リンクから参加する
         </h2>
         <p className="sheet__text">
           チームの代表から届いた招待リンクを開くと、そのチームに参加できます。招待リンクはメールやLINEで送られてきます。

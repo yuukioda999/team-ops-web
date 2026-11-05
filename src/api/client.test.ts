@@ -65,3 +65,32 @@ describe('API client', () => {
     window.removeEventListener(SESSION_EXPIRED_EVENT, listener)
   })
 })
+
+describe('API client after a failed CSRF request', () => {
+  it('tries to get the CSRF cookie again on the next change instead of failing forever', async () => {
+    for (const c of document.cookie.split('; ')) {
+      const name = c.split('=')[0]
+      if (name) document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+    }
+    let csrfCalls = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (url.endsWith('/api/sanctum/csrf-cookie')) {
+        csrfCalls++
+        if (csrfCalls === 1) throw new TypeError('Failed to fetch')
+        document.cookie = 'XSRF-TOKEN=ok; path=/'
+        return new Response(null, { status: 204 })
+      }
+      // Like the API: no token means 419
+      const hasToken = input instanceof Request && input.headers.get('X-XSRF-TOKEN') !== null
+      return hasToken
+        ? new Response(JSON.stringify({ message: 'メールを送信しました' }), { status: 202 })
+        : new Response(JSON.stringify({ message: 'ページの有効期限が切れました' }), { status: 419 })
+    }))
+
+    const { response } = await withCsrfRetry(() => api.POST('/api/auth/login-links', { body: { email: 'a@example.invalid' } }))
+
+    expect(response.status).toBe(202)
+    expect(csrfCalls).toBe(2)
+  })
+})

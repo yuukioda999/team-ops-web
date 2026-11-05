@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { renderAt, signedIn, signedOut } from '../../test/render.tsx'
@@ -74,11 +74,22 @@ describe('メールアドレス変更の確定', () => {
     expect(screen.getByText(/前のメールアドレスにも、変更したことを知らせました/)).toBeInTheDocument()
   })
 
-  it('D5 requires the requester to log in first, then comes back to this page', async () => {
-    const { router } = renderAt('/settings/email/verify?token=abc', { 'GET /api/me': signedOut })
+  it('D5 requires the requester to log in first, then comes back to confirm', async () => {
+    const { router } = renderAt('/settings/email/verify?token=change-token', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links/consume': signedIn(),
+      'POST /api/me/email-changes/consume': signedIn({ email: 'new@example.invalid' }),
+    })
 
     expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
-    expect(new URLSearchParams(router.state.location.search).get('next')).toBe('/settings/email/verify?token=abc')
+    expect(router.state.location.search).toBe('') // the token is not in the login page's URL (D7)
+
+    // the user opens the login link from the mail
+    await act(() => router.navigate('/login/verify?token=login-token'))
+    await userEvent.click(await screen.findByRole('button', { name: 'ログインする' }))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'メールアドレスを変更する' }))
+    expect(await screen.findByRole('heading', { name: 'メールアドレスを変更しました' })).toBeInTheDocument()
   })
 
   it('AC-001-09 an expired, used or someone else\'s link offers to request again', async () => {

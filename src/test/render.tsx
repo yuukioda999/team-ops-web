@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import type { Me, Team } from '../api/client.ts'
 import { routes } from '../routes.tsx'
 
-export type Reply = { status: number; body?: unknown }
+export type Reply = { status: number; body?: unknown } | 'network-error'
 /** "METHOD /path" -> reply, or a function for replies that depend on the request. */
 export type Handlers = Record<string, Reply | ((body: unknown) => Reply)>
 
@@ -33,6 +33,9 @@ export function renderAt(path: string, handlers: Handlers) {
         throw new Error(`Unexpected request: ${key}`)
       }
       const reply = typeof handler === 'function' ? handler(body) : handler
+      if (reply === 'network-error') {
+        throw new TypeError('Failed to fetch')
+      }
       return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
         status: reply.status,
         headers: { 'Content-Type': 'application/json' },
@@ -62,4 +65,4 @@ export const me = (overrides: Partial<Me> = {}): Me => ({
 })
 
 export const signedOut: Reply = { status: 401, body: { message: 'ログインしてください' } }
-export const signedIn = (overrides: Partial<Me> = {}): Reply => ({ status: 200, body: me(overrides) })
+export const signedIn = (overrides: Partial<Me> = {}) => ({ status: 200, body: me(overrides) })

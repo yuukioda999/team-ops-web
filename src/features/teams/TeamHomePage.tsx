@@ -42,7 +42,12 @@ function TeamHome({ teamId }: { teamId: string }) {
 
   if (state.status !== 'ready') {
     return (
-      <PageFrame title="チーム運営" signedInAs={me.email} account>
+      <PageFrame
+        title="チーム運営"
+        pageTitle={state.status === 'not-found' ? 'チームが見つかりません' : 'チームを読み込めませんでした'}
+        signedInAs={me.email}
+        account
+      >
         <Panel tag="チーム" title={state.status === 'not-found' ? 'チームが見つかりません' : 'チームを読み込めませんでした'}>
           <p className="panel__text">
             {state.status === 'not-found'
@@ -61,6 +66,7 @@ function TeamHome({ teamId }: { teamId: string }) {
   return (
     <PageFrame
       title={team.name}
+      pageTitle={team.name}
       home={`/teams/${team.id}`}
       signedInAs={me.email}
       account
@@ -71,12 +77,6 @@ function TeamHome({ teamId }: { teamId: string }) {
           {me.display_name}さん、ようこそ。{me.teams.length > 1 ? `${me.teams.length}チームに所属しています。右上のボタンで切り替えられます。` : ''}
         </p>
       </Panel>
-      <section className="sheet" aria-labelledby="notices-title">
-        <h2 id="notices-title" className="sheet__title">
-          お知らせ
-        </h2>
-        <p className="sheet__text">お知らせはまだありません。お知らせの作成と既読の確認は、次の更新で使えるようになります。</p>
-      </section>
     </PageFrame>
   )
 }

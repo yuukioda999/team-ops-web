@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, errorMessage, fieldErrors, withCsrfRetry, type Sport } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { TextField } from '../../components/TextField.tsx'
+import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { useMe, useSession } from '../auth/session-context.ts'
 import { SPORT_LABELS } from './sports.ts'
 
@@ -19,6 +20,8 @@ export function NewTeamPage() {
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const form = useRef<HTMLFormElement>(null)
+  useFocusFirstInvalid(form, errors)
 
   async function create(event: FormEvent) {
     event.preventDefault()
@@ -41,12 +44,12 @@ export function NewTeamPage() {
   }
 
   return (
-    <PageFrame title="チームを作成" signedInAs={me.email} account>
+    <PageFrame title="チームを作成" pageTitle="チームを作成" signedInAs={me.email} account>
       <h1 className="visually-hidden">チームを作成</h1>
       {/* 6つ目のチームなど、項目に結びつかない理由(AC-001-12) */}
       {errors.team?.[0] !== undefined && <Alert tone="error">{errors.team[0]}</Alert>}
       {error !== null && <Alert tone="error">{error}</Alert>}
-      <form className="sheet" onSubmit={(e) => void create(e)} noValidate>
+      <form ref={form} className="sheet" onSubmit={(e) => void create(e)} noValidate>
         <p className="sheet__text">作ったあなたが、このチームの代表になります。</p>
         <TextField
           label="チーム名"

@@ -5,6 +5,8 @@ export type SessionState =
   | { status: 'loading' }
   | { status: 'signed-out'; expired: boolean }
   | { status: 'signed-in'; me: Me }
+  /** The API could not be reached or failed. Not the same as being logged out. */
+  | { status: 'unavailable' }
 
 export type Session = {
   state: SessionState
@@ -18,10 +20,11 @@ export type Session = {
 
 export const SessionContext = createContext<Session | null>(null)
 
-/** Asks the API who is logged in. A 401 (or any failure) means nobody. */
+/** Asks the API who is logged in. Only a 401 means nobody; other failures are shown as errors. */
 export async function loadSession(): Promise<SessionState> {
-  const { data } = await api.GET('/api/me')
-  return data !== undefined ? { status: 'signed-in', me: data } : { status: 'signed-out', expired: false }
+  const { data, response } = await api.GET('/api/me')
+  if (data !== undefined) return { status: 'signed-in', me: data }
+  return response.status === 401 ? { status: 'signed-out', expired: false } : { status: 'unavailable' }
 }
 
 export function useSession(): Session {
@@ -39,15 +42,4 @@ export function useMe(): Me {
     throw new Error('useMe is only available on signed-in pages')
   }
   return state.me
-}
-
-/**
- * Keeps a "go back here after login" path safe: only paths on this site.
- * Rejects absolute URLs and protocol-relative "//host" (open redirect).
- */
-export function safeNext(next: string | null): string | null {
-  if (next === null || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
-    return null
-  }
-  return next
 }

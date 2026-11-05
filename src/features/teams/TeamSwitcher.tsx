@@ -1,19 +1,42 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { Team } from '../../api/client.ts'
 import { ROLE_LABELS } from './sports.ts'
 
 /**
  * 所属するチームの切り替え(AC-001-13)。チームごとに URL が違う(ADR-0009)ので、
- * 選ぶとそのチームの画面に移る。
+ * 選ぶとそのチームの画面に移る。Escape かメニューの外を押すと閉じ、ボタンにフォーカスを戻す。
  */
 export function TeamSwitcher({ teams, currentId }: { teams: Team[]; currentId: string }) {
   const [open, setOpen] = useState(false)
   const listId = useId()
+  const root = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (returnFocus: boolean) => {
+      setOpen(false)
+      if (returnFocus) button.current?.focus()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close(true)
+    }
+    const onPointer = (e: PointerEvent) => {
+      if (root.current !== null && !root.current.contains(e.target as Node)) close(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [open])
 
   return (
-    <div className="switcher">
+    <div className="switcher" ref={root}>
       <button
+        ref={button}
         type="button"
         className="icon-button"
         aria-label="チームを切り替える"
