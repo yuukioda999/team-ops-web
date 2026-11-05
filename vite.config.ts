@@ -11,7 +11,8 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      '/api': { target: apiTarget, changeOrigin: true },
+      // xfwd: the API sees each user's IP in X-Forwarded-For, so its per-IP rate limits work (AC-001-05)
+      '/api': { target: apiTarget, changeOrigin: true, xfwd: true },
     },
   },
   test: {

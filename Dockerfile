@@ -14,7 +14,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Production preview image (the public demo is served as static files from a CDN).
+# Production image: nginx serves the app and forwards /api to the API on the same origin.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS prod
+ENV API_UPSTREAM=http://api:8000
+COPY deploy/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080

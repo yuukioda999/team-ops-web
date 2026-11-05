@@ -11,6 +11,12 @@
   --color-unread: #b23a28;
   --color-unread-soft: #ff8a73;
   --color-border: #e3e8f2;
+  --color-border-strong: #cdd4e2;
+  --color-score-dash: #a3acc4;
+  --color-on-accent: #0d1a3a;
+
+  --shadow-panel: 0 12px 26px rgba(13, 26, 58, 0.25);
+  --shadow-float: 0 10px 22px rgba(13, 26, 58, 0.3);
 
   --font-body: 'IBM Plex Sans JP', 'Hiragino Sans', system-ui, sans-serif;
   --font-score: 'Barlow Condensed', 'Arial Narrow', sans-serif;
