@@ -2,12 +2,12 @@
 
 # Development: the source is mounted from ../team-ops-web by team-ops/compose.yaml.
 # Runs as root so it can write node_modules into the named volume on any host.
-FROM node:22-alpine AS dev
+FROM node:25-alpine AS dev
 WORKDIR /app
 EXPOSE 5173
 CMD ["sh", "-c", "npm ci && npm run dev"]
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
