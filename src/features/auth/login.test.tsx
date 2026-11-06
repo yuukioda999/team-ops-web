@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { renderAt, signedIn, signedOut, team } from '../../test/render.tsx'
+import { renderAt, signedIn, signedOut, team, type Reply } from '../../test/render.tsx'
 
 describe('ログイン用リンクの要求', () => {
   it('AC-001-01 sends a login link and tells the user to check the mail', async () => {
@@ -132,6 +132,28 @@ describe('メールのリンクからのログイン', () => {
     expect(await screen.findByRole('heading', { name: '表示名を登録してください' })).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ token: 'abc' })
     expect(screen.getByText('coach@example.invalid')).toBeInTheDocument()
+  })
+
+  it('AC-001-03 the login waits for the session check, so its late reply cannot log the user out', async () => {
+    // A GET /api/me answered after the login would bring a guest session cookie and replace the new one
+    let answerSessionCheck: (reply: Reply) => void = () => undefined
+    const { calls } = renderAt('/login/verify?token=abc', {
+      'GET /api/me': () => new Promise<Reply>((resolve) => (answerSessionCheck = resolve)),
+      'POST /api/auth/login-links/consume': signedIn({ display_name: null, needs_display_name: true }),
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'ログインする' }))
+    expect(screen.getByRole('button', { name: 'ログインしています' })).toBeDisabled()
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0)
+    expect(calls.filter((c) => c.path === '/api/me')).toHaveLength(1)
+
+    answerSessionCheck(signedOut)
+
+    expect(await screen.findByRole('heading', { name: '表示名を登録してください' })).toBeInTheDocument()
+    expect(calls.map((c) => `${c.method} ${c.path}`).filter((c) => c.includes('/api/me') || c.includes('consume'))).toEqual([
+      'GET /api/me',
+      'POST /api/auth/login-links/consume',
+    ])
   })
 
   it('AC-001-03 a registered user goes to their team', async () => {
