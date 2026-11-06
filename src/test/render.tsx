@@ -6,7 +6,7 @@ import { routes } from '../routes.tsx'
 
 export type Reply = { status: number; body?: unknown } | 'network-error'
 /** "METHOD /path" -> reply, or a function for replies that depend on the request. */
-export type Handlers = Record<string, Reply | ((body: unknown) => Reply)>
+export type Handlers = Record<string, Reply | ((body: unknown) => Reply | Promise<Reply>)>
 
 export type Call = { method: string; path: string; body: unknown; headers: Headers }
 
@@ -32,7 +32,7 @@ export function renderAt(path: string, handlers: Handlers) {
       if (handler === undefined) {
         throw new Error(`Unexpected request: ${key}`)
       }
-      const reply = typeof handler === 'function' ? handler(body) : handler
+      const reply = typeof handler === 'function' ? await handler(body) : handler
       if (reply === 'network-error') {
         throw new TypeError('Failed to fetch')
       }

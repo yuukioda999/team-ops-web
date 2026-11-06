@@ -4,7 +4,7 @@ import { api, errorMessage, withCsrfRetry } from '../../api/client.ts'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { takeReturnTo } from './return-to.ts'
-import { useSession } from './session-context.ts'
+import { sessionSettled, useSession } from './session-context.ts'
 import { useLinkToken } from './use-link-token.ts'
 
 /**
@@ -20,6 +20,7 @@ export function VerifyLoginPage() {
 
   async function logIn() {
     setBusy(true)
+    await sessionSettled()
     const { data, response, error } = await withCsrfRetry(() =>
       api.POST('/api/auth/login-links/consume', { body: { token } }),
     )

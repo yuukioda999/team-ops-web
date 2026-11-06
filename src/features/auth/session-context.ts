@@ -20,11 +20,35 @@ export type Session = {
 
 export const SessionContext = createContext<Session | null>(null)
 
-/** Asks the API who is logged in. Only a 401 means nobody; other failures are shown as errors. */
-export async function loadSession(): Promise<SessionState> {
+let pending: Promise<SessionState> | null = null
+
+/**
+ * Asks the API who is logged in. Only a 401 means nobody; other failures are shown as errors.
+ * Calls made while a request is in flight share it, so there is never more than one.
+ */
+export function loadSession(): Promise<SessionState> {
+  pending ??= fetchSession().finally(() => {
+    pending = null
+  })
+  return pending
+}
+
+async function fetchSession(): Promise<SessionState> {
   const { data, response } = await api.GET('/api/me')
   if (data !== undefined) return { status: 'signed-in', me: data }
   return response.status === 401 ? { status: 'signed-out', expired: false } : { status: 'unavailable' }
+}
+
+/**
+ * Waits until no session request is in flight. Call it before logging in: a GET /api/me
+ * sent while logged out gets a new guest session cookie in its response, and if that
+ * response arrives after the login response it replaces the new session cookie, which
+ * logs the user straight out again.
+ */
+export async function sessionSettled(): Promise<void> {
+  while (pending !== null) {
+    await pending.catch(() => undefined)
+  }
 }
 
 export function useSession(): Session {
