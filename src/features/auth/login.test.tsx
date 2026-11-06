@@ -21,6 +21,14 @@ describe('ログイン用リンクの要求', () => {
     expect(post?.headers.get('X-XSRF-TOKEN')).toBe('test-xsrf-token')
   })
 
+  it('D5 shows the email change hint only when the user came from an email change link', async () => {
+    sessionStorage.clear()
+    renderAt('/login', { 'GET /api/me': signedOut })
+
+    expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
+    expect(screen.queryByText(/メールアドレスの変更を続けるには/)).not.toBeInTheDocument()
+  })
+
   it('AC-001-02 shows the same screen whether or not the address is registered', async () => {
     renderAt('/login', {
       'GET /api/me': signedOut,

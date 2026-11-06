@@ -6,8 +6,22 @@ import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
+import { peekReturnTo } from './return-to.ts'
 
 const APP_NAME = 'チーム運営'
+
+/**
+ * The way back to the email change page is kept in this tab only. The login link in the mail
+ * usually opens a new tab, which then lands on the home page (plan.md D5), so say what to do.
+ */
+function EmailChangeHint() {
+  if (!peekReturnTo()?.startsWith('/settings/email/verify')) return null
+  return (
+    <Alert tone="info">
+      メールアドレスの変更を続けるには、ログインしてから、もう一度メールアドレスの確認のメールにあるリンクを開いてください。
+    </Alert>
+  )
+}
 
 /**
  * ログイン用リンクを要求する(AC-001-01・02・05)。登録済みかどうかで表示は変えない。
@@ -48,6 +62,7 @@ export function LoginPage() {
             <strong>{sentTo}</strong> にログイン用のリンクを送りました。メールのリンクを開き、表示された画面で「ログインする」を押してください。
           </p>
         </Panel>
+        <EmailChangeHint />
         {error !== null && <Alert tone="error">{error}</Alert>}
         <section className="sheet" aria-labelledby="not-arrived">
           <h2 id="not-arrived" className="sheet__title">
@@ -72,6 +87,7 @@ export function LoginPage() {
           入力したメールアドレスに、ログイン用のリンクを送ります。はじめての方も、同じ手順で登録できます。
         </p>
       </Panel>
+      <EmailChangeHint />
       {params.get('expired') === '1' && <Alert tone="info">ログインの有効期限が切れました。もう一度ログインしてください。</Alert>}
       {error !== null && <Alert tone="error">{error}</Alert>}
       <form ref={form} className="sheet" onSubmit={(e) => void send(e)} noValidate>

@@ -74,7 +74,7 @@ describe('メールアドレス変更の確定', () => {
     expect(screen.getByText(/前のメールアドレスにも、変更したことを知らせました/)).toBeInTheDocument()
   })
 
-  it('D5 requires the requester to log in first, then comes back to confirm', async () => {
+  it('D5 requires the requester to log in first, then comes back to confirm in the same tab', async () => {
     const { router } = renderAt('/settings/email/verify?token=change-token', {
       'GET /api/me': signedOut,
       'POST /api/auth/login-links/consume': signedIn(),
@@ -83,6 +83,8 @@ describe('メールアドレス変更の確定', () => {
 
     expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('') // the token is not in the login page's URL (D7)
+    // the login link may open in another tab, which cannot come back here: say what to do
+    expect(screen.getByText(/もう一度メールアドレスの確認のメールにあるリンクを開いてください/)).toBeInTheDocument()
 
     // the user opens the login link from the mail
     await act(() => router.navigate('/login/verify?token=login-token'))
