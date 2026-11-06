@@ -154,7 +154,9 @@ function JoinForm({ token, teamName, sport }: { token: string; teamName: string;
   return (
     <PageFrame title="チーム運営" pageTitle={`${teamName}への参加申請`} signedInAs={me.email} account>
       <Panel tag="参加申請" meta={sport} title={teamName}>
-        <p className="panel__text">参加を申請すると、チームの代表または役員が確認して承認します。</p>
+        <p className="panel__text">
+          参加を申請すると、チームの代表または役員が確認して承認します。心当たりのないチームからの招待なら、申請しないでください。
+        </p>
       </Panel>
       {failure !== null && <Alert tone="error">{failure}</Alert>}
       <form ref={form} className="sheet" onSubmit={(e) => void apply(e)} noValidate>

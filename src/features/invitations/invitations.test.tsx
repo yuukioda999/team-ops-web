@@ -181,6 +181,39 @@ describe('招待リンクを開く', () => {
     expect(screen.getByLabelText('ひとこと(任意)')).toHaveFocus()
   })
 
+  it('AC-002-16 someone whose earlier request was not approved can apply again', async () => {
+    renderAt(`/join?token=${TOKEN}`, {
+      'GET /api/me': signedIn({ join_requests: [{ id: 2, team_name: 'あおば台FC U-10', status: 'rejected', created_at: '2026-11-06T10:00:00+09:00' }] }),
+      'POST /api/invitations/preview': preview({ relation: 'none' }),
+      'POST /api/invitations/applications': { status: 201, body: { status: 'pending', team: { name: 'あおば台FC U-10' } } },
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: '参加を申請する' }))
+
+    expect(await screen.findByRole('heading', { name: '承認待ちです' })).toBeInTheDocument()
+  })
+
+  it('AC-002-06 the request form warns not to apply to a team the user does not know', async () => {
+    renderAt(`/join?token=${TOKEN}`, {
+      'GET /api/me': signedIn(),
+      'POST /api/invitations/preview': preview({ relation: 'none' }),
+    })
+
+    expect(await screen.findByText(/心当たりのないチームからの招待なら、申請しないでください/)).toBeInTheDocument()
+  })
+
+  it('AC-002-18 more than 3 requests a day to one team: says to try later', async () => {
+    renderAt(`/join?token=${TOKEN}`, {
+      'GET /api/me': signedIn(),
+      'POST /api/invitations/preview': preview({ relation: 'none' }),
+      'POST /api/invitations/applications': { status: 429, body: { message: 'このチームへの申請は1日3回までです。時間をおいてもう一度お試しください' } },
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: '参加を申請する' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('このチームへの申請は1日3回までです')
+  })
+
   it('AC-002-09 someone already waiting sees that instead of the form', async () => {
     renderAt(`/join?token=${TOKEN}`, {
       'GET /api/me': signedIn(),
