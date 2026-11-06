@@ -35,6 +35,15 @@ export function saveReturnTo(path: string): void {
   }
 }
 
+/** Reads the saved path without forgetting it (for showing a hint before login). */
+export function peekReturnTo(): string | null {
+  try {
+    return safeNext(sessionStorage.getItem(KEY))
+  } catch {
+    return null
+  }
+}
+
 /** Reads the saved path once and forgets it. */
 export function takeReturnTo(): string | null {
   try {
