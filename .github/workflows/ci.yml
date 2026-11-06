@@ -56,7 +56,7 @@ jobs:
           curl -fs -o /dev/null "http://localhost:8080/login?token=secret-token-value"
           sleep 1
           docker logs web 2>&1 | tee /tmp/web.log
-          grep -q "/login" /tmp/web.log # requests are logged at all
+          grep -q "\"GET /" /tmp/web.log # requests are logged at all (app paths appear as /index.html)
           ! grep -q secret-token-value /tmp/web.log
       - if: always()
         run: docker rm -f web
