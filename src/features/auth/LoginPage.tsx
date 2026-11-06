@@ -18,7 +18,7 @@ function EmailChangeHint() {
   if (!peekReturnTo()?.startsWith('/settings/email/verify')) return null
   return (
     <Alert tone="info">
-      メールアドレスの変更を続けるには、ログインしてから、もう一度メールアドレスの確認のメールにあるリンクを開いてください。
+      メールアドレスの変更を続けるには、ログインしたら、もう一度メールのリンクを開いてください。
     </Alert>
   )
 }

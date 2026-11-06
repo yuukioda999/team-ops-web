@@ -84,7 +84,7 @@ describe('メールアドレス変更の確定', () => {
     expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('') // the token is not in the login page's URL (D7)
     // the login link may open in another tab, which cannot come back here: say what to do
-    expect(screen.getByText(/もう一度メールアドレスの確認のメールにあるリンクを開いてください/)).toBeInTheDocument()
+    expect(screen.getByText(/ログインしたら、もう一度メールのリンクを開いてください/)).toBeInTheDocument()
 
     // the user opens the login link from the mail
     await act(() => router.navigate('/login/verify?token=login-token'))
@@ -106,7 +106,7 @@ describe('メールアドレス変更の確定', () => {
     expect(screen.getByRole('link', { name: 'アカウント設定から申請し直す' })).toHaveAttribute('href', '/settings')
   })
 
-  it('AC-001-09 says when the address was taken in the meantime', async () => {
+  it('AC-001-17 says when the address was taken in the meantime', async () => {
     renderAt('/settings/email/verify?token=abc', {
       'GET /api/me': signedIn(),
       'POST /api/me/email-changes/consume': {
