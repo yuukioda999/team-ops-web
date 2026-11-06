@@ -4,11 +4,26 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Follows the Node major in the Dockerfile and CI; raise all three together by hand
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Node: only LTS lines, raised by hand together with CI and @types/node
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      # nginx: odd minor versions are mainline; move to the next stable line by hand
+      - dependency-name: nginx/nginx-unprivileged
+        update-types: ["version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    # Actions that are used together (the Docker ones, checkout and setup-*) are tested together
+    groups:
+      actions:
+        patterns: ["*"]
