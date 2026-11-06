@@ -10,6 +10,12 @@ import type { components, paths } from './schema'
 
 export type Me = components['schemas']['Me']
 export type Team = components['schemas']['Team']
+export type TeamSummary = components['schemas']['TeamSummary']
+export type TeamRole = components['schemas']['TeamRole']
+export type Invitation = components['schemas']['Invitation']
+export type InvitationPreview = components['schemas']['InvitationPreview']
+export type JoinRequest = components['schemas']['JoinRequest']
+export type MyJoinRequest = components['schemas']['MyJoinRequest']
 export type Sport = components['schemas']['Sport']
 export type ValidationErrors = Record<string, string[]>
 

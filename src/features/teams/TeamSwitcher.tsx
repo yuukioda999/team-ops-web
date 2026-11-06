@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import type { Team } from '../../api/client.ts'
-import { ROLE_LABELS } from './sports.ts'
+import type { TeamSummary } from '../../api/client.ts'
+import { rolesLabel } from './sports.ts'
 
 /**
  * 所属するチームの切り替え(AC-001-13)。チームごとに URL が違う(ADR-0009)ので、
  * 選ぶとそのチームの画面に移る。Escape かメニューの外を押すと閉じ、ボタンにフォーカスを戻す。
  */
-export function TeamSwitcher({ teams, currentId }: { teams: Team[]; currentId: string }) {
+export function TeamSwitcher({ teams, currentId }: { teams: TeamSummary[]; currentId: string }) {
   const [open, setOpen] = useState(false)
   const listId = useId()
   const root = useRef<HTMLDivElement>(null)
@@ -63,7 +63,7 @@ export function TeamSwitcher({ teams, currentId }: { teams: Team[]; currentId: s
                   onClick={() => setOpen(false)}
                 >
                   <span className="switcher__name">{team.name}</span>
-                  <span className="switcher__role">{ROLE_LABELS[team.role]}</span>
+                  <span className="switcher__role">{rolesLabel(team.roles)}</span>
                 </Link>
               </li>
             ))}

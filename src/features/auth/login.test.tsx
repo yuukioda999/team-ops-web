@@ -21,12 +21,19 @@ describe('ログイン用リンクの要求', () => {
     expect(post?.headers.get('X-XSRF-TOKEN')).toBe('test-xsrf-token')
   })
 
-  it('D5 shows the email change hint only when the user came from an email change link', async () => {
+  it('AC-001-19 an ordinary login sends no return path and shows no hint about one', async () => {
     sessionStorage.clear()
-    renderAt('/login', { 'GET /api/me': signedOut })
+    const { calls } = renderAt('/login', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links': { status: 202, body: { message: 'メールを送信しました' } },
+    })
 
-    expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
-    expect(screen.queryByText(/メールアドレスの変更を続けるには/)).not.toBeInTheDocument()
+    await userEvent.type(await screen.findByLabelText('メールアドレス'), 'coach@example.invalid')
+    await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
+
+    await screen.findByRole('heading', { name: 'メールを送信しました' })
+    expect(calls.find((c) => c.path === '/api/auth/login-links')?.body).toEqual({ email: 'coach@example.invalid' })
+    expect(screen.queryByText(/もう一度メールのリンクを開いてください/)).not.toBeInTheDocument()
   })
 
   it('AC-001-02 shows the same screen whether or not the address is registered', async () => {

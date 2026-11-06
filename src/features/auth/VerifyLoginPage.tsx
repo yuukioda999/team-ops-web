@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { api, errorMessage, withCsrfRetry } from '../../api/client.ts'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
-import { takeReturnTo } from './return-to.ts'
+import { safeNext, saveReturnTo, takeReturnTo } from './return-to.ts'
 import { sessionSettled, useSession } from './session-context.ts'
 import { useLinkToken } from './use-link-token.ts'
 
@@ -27,8 +27,19 @@ export function VerifyLoginPage() {
     setBusy(false)
     if (data !== undefined) {
       setMe(data)
-      // A new user enters a display name first; WelcomePage then goes to the saved page
-      navigate(data.needs_display_name ? '/welcome' : (takeReturnTo() ?? '/'), { replace: true })
+      // The page the user came from: kept by the API with the login link (AC-001-19), or saved in this tab
+      const local = takeReturnTo()
+      const next = safeNext(data.return_to ?? null) ?? local
+      if (next?.startsWith('/join') === true) {
+        // The join request form asks for the display name itself (002 decision 5)
+        navigate(next, { replace: true })
+      } else if (data.needs_display_name) {
+        // A new user enters a display name first; WelcomePage then goes to the saved page
+        if (next !== null) saveReturnTo(next)
+        navigate('/welcome', { replace: true })
+      } else {
+        navigate(next ?? '/', { replace: true })
+      }
       return
     }
     // 410 expired/used, 422 malformed link: the same message (AC-001-04)

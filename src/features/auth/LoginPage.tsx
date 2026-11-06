@@ -11,19 +11,6 @@ import { peekReturnTo } from './return-to.ts'
 const APP_NAME = 'チーム運営'
 
 /**
- * The way back to the email change page is kept in this tab only. The login link in the mail
- * usually opens a new tab, which then lands on the home page (plan.md D5), so say what to do.
- */
-function EmailChangeHint() {
-  if (!peekReturnTo()?.startsWith('/settings/email/verify')) return null
-  return (
-    <Alert tone="info">
-      メールアドレスの変更を続けるには、ログインしたら、もう一度メールのリンクを開いてください。
-    </Alert>
-  )
-}
-
-/**
  * ログイン用リンクを要求する(AC-001-01・02・05)。登録済みかどうかで表示は変えない。
  */
 export function LoginPage() {
@@ -41,7 +28,12 @@ export function LoginPage() {
     setBusy(true)
     setError(null)
     setEmailError(undefined)
-    const { response, error: body } = await withCsrfRetry(() => api.POST('/api/auth/login-links', { body: { email } }))
+    // The page to come back to after logging in travels with the login link (AC-001-19), so it
+    // works even when the mail is opened in another tab or app. The API accepts only known paths.
+    const returnTo = peekReturnTo()
+    const { response, error: body } = await withCsrfRetry(() =>
+      api.POST('/api/auth/login-links', { body: returnTo === null ? { email } : { email, return_to: returnTo } }),
+    )
     setBusy(false)
 
     if (response.status === 202) {
@@ -62,7 +54,6 @@ export function LoginPage() {
             <strong>{sentTo}</strong> にログイン用のリンクを送りました。メールのリンクを開き、表示された画面で「ログインする」を押してください。
           </p>
         </Panel>
-        <EmailChangeHint />
         {error !== null && <Alert tone="error">{error}</Alert>}
         <section className="sheet" aria-labelledby="not-arrived">
           <h2 id="not-arrived" className="sheet__title">
@@ -87,7 +78,6 @@ export function LoginPage() {
           入力したメールアドレスに、ログイン用のリンクを送ります。はじめての方も、同じ手順で登録できます。
         </p>
       </Panel>
-      <EmailChangeHint />
       {params.get('expired') === '1' && <Alert tone="info">ログインの有効期限が切れました。もう一度ログインしてください。</Alert>}
       {error !== null && <Alert tone="error">{error}</Alert>}
       <form ref={form} className="sheet" onSubmit={(e) => void send(e)} noValidate>
