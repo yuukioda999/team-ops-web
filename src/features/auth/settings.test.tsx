@@ -74,7 +74,7 @@ describe('メールアドレス変更の確定', () => {
     expect(screen.getByText(/前のメールアドレスにも、変更したことを知らせました/)).toBeInTheDocument()
   })
 
-  it('D5 requires the requester to log in first, then comes back to confirm', async () => {
+  it('D5 requires the requester to log in first, then comes back to confirm in the same tab', async () => {
     const { router } = renderAt('/settings/email/verify?token=change-token', {
       'GET /api/me': signedOut,
       'POST /api/auth/login-links/consume': signedIn(),
@@ -83,6 +83,8 @@ describe('メールアドレス変更の確定', () => {
 
     expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('') // the token is not in the login page's URL (D7)
+    // the login link may open in another tab, which cannot come back here: say what to do
+    expect(screen.getByText(/ログインしたら、もう一度メールのリンクを開いてください/)).toBeInTheDocument()
 
     // the user opens the login link from the mail
     await act(() => router.navigate('/login/verify?token=login-token'))
@@ -104,7 +106,7 @@ describe('メールアドレス変更の確定', () => {
     expect(screen.getByRole('link', { name: 'アカウント設定から申請し直す' })).toHaveAttribute('href', '/settings')
   })
 
-  it('AC-001-09 says when the address was taken in the meantime', async () => {
+  it('AC-001-17 says when the address was taken in the meantime', async () => {
     renderAt('/settings/email/verify?token=abc', {
       'GET /api/me': signedIn(),
       'POST /api/me/email-changes/consume': {
