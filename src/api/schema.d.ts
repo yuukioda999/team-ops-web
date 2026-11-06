@@ -34,6 +34,8 @@ export interface paths {
          * ログイン用リンクをメールで送る
          * @description 登録済みかどうかにかかわらず、同じ応答を返します(AC-001-01・02)。
          *     同じメールアドレスで1時間に6回以上要求すると 429 になり、メールは送りません(AC-001-05)。
+         *     `return_to` を付けると、リンクでログインしたときの応答で同じ値を返します(AC-001-19)。
+         *     受け付けるのは `/join?token=...` と `/settings/email/verify?token=...` の形だけで、それ以外は無視します。
          */
         post: operations["requestLoginLink"];
         delete?: never;
@@ -190,6 +192,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 今の招待リンク
+         * @description 代表・役員だけ(AC-002-01・04)。有効なリンクがなければ `invitation` は null です。
+         */
+        get: operations["getInvitation"];
+        put?: never;
+        /**
+         * 招待リンクを発行する
+         * @description 有効期限は7日。チームで有効なリンクは1つなので、古いリンクは無効になります(AC-002-01・02)。
+         */
+        post: operations["issueInvitation"];
+        /**
+         * 招待リンクを無効にする
+         * @description 以後そのリンクからは申請できません(AC-002-03)。有効なリンクがなくても 204 です。
+         */
+        delete: operations["revokeInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/join-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 承認待ちの申請の一覧
+         * @description 代表・役員だけ。申請日時の古い順です(AC-002-11)。
+         */
+        get: operations["listJoinRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/join-requests/{joinRequest}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 参加申請のID */
+                joinRequest: components["parameters"]["JoinRequestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 申請を承認する
+         * @description 役割は保護者・コーチから選びます(複数可)。役員・代表は 422 です(AC-002-12・14)。承認されたことを本人にメールで知らせます。
+         */
+        post: operations["approveJoinRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/join-requests/{joinRequest}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 参加申請のID */
+                joinRequest: components["parameters"]["JoinRequestId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 申請を却下する
+         * @description 申請者には通知しません。申請者の画面には「承認されませんでした」と表示されます(AC-002-13)。
+         */
+        post: operations["rejectJoinRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 招待リンクのチーム名
+         * @description ログインは不要です(AC-002-05)。トークンは URL ではなく本文で渡します。
+         *     期限切れ・無効化・存在しないリンクは、区別せず 410 です(AC-002-07)。
+         *     ログイン中なら `relation` に、そのチームとの関係(member / pending / none)が入ります。メンバーなら `team_id` も入ります(AC-002-08)。
+         */
+        post: operations["previewInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 招待リンクから参加を申請する
+         * @description 申請は「承認待ち」になり、代表・役員にメールで知らせます(AC-002-06)。表示名はアカウントの表示名になります。
+         *     すでに承認待ちなら新しい申請は作らず 200 です(AC-002-09)。却下・取り消しのあとは再申請できます(AC-002-16)。
+         *     すでにメンバーなら 409 で、`team_id` にチームのIDが入ります(AC-002-08)。
+         *     1つのリンクに24時間で50件を超える申請があると 429 です(AC-002-10)。
+         */
+        post: operations["applyToTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -205,12 +356,14 @@ export interface components {
                 [key: string]: string[];
             };
         };
-        EmailInput: {
+        LoginLinkInput: {
             /**
              * Format: email
              * @description 半角(ASCII)のアドレスだけ。前後の空白は除き、小文字にそろえて扱う
              */
             email: string;
+            /** @description ログイン後に戻る先(AC-001-19)。`/join?token=...` と `/settings/email/verify?token=...` の形だけを受け付け、それ以外は無視する */
+            return_to?: string | null;
         };
         NewEmailInput: {
             /**
@@ -235,10 +388,15 @@ export interface components {
         /** @enum {string} */
         Sport: "soccer" | "baseball" | "other";
         /**
-         * @description 001 では representative だけ。004 で増やす
+         * @description 代表・役員・コーチ・保護者。1人が複数持てる(ADR-0011)
          * @enum {string}
          */
-        TeamRole: "representative";
+        TeamRole: "representative" | "officer" | "coach" | "parent";
+        /**
+         * @description 承認待ち・承認・却下・自動取り消し
+         * @enum {string}
+         */
+        JoinRequestStatus: "pending" | "approved" | "rejected" | "cancelled";
         Me: {
             /** Format: email */
             email: string;
@@ -246,18 +404,107 @@ export interface components {
             display_name: string | null;
             /** @description true なら表示名の入力画面に進む */
             needs_display_name: boolean;
-            teams: components["schemas"]["Team"][];
+            teams: components["schemas"]["TeamSummary"][];
+            /** @description 自分の参加申請のうち、承認待ちと承認されなかったもの(AC-002-09・13)。承認されたものは teams に入る */
+            join_requests: components["schemas"]["MyJoinRequest"][];
+        };
+        LoginResult: components["schemas"]["Me"] & {
+            /** @description ログイン後に進む先(AC-001-19)。ログイン用リンクの要求で受け付けた値 */
+            return_to: string | null;
+        };
+        TeamSummary: {
+            id: string;
+            name: string;
+            sport: components["schemas"]["Sport"];
+            roles: components["schemas"]["TeamRole"][];
         };
         Team: {
             id: string;
             name: string;
             sport: components["schemas"]["Sport"];
-            role: components["schemas"]["TeamRole"];
+            /** @description 自分の役割 */
+            roles: components["schemas"]["TeamRole"][];
+            /** @description 画面の出し分け用。判定は API の TeamPolicy と同じ */
+            permissions: {
+                manage_invitation: boolean;
+                review_join_requests: boolean;
+            };
+        };
+        MyJoinRequest: {
+            id: number;
+            team_name: string;
+            status: components["schemas"]["JoinRequestStatus"];
+            /** Format: date-time */
+            created_at: string;
+        };
+        Invitation: {
+            /** @description 招待リンク。画面はこの URL から QR コードを作る */
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        InvitationEnvelope: {
+            invitation: components["schemas"]["Invitation"] | null;
+        };
+        InvitationPreview: {
+            team: {
+                name: string;
+                sport: components["schemas"]["Sport"];
+            };
+            /**
+             * @description ログイン中のときだけ。そのチームとの関係
+             * @enum {string|null}
+             */
+            relation: "member" | "pending" | "none" | null;
+            /** @description メンバーのときだけ。チームの画面へ進むため */
+            team_id: string | null;
+        };
+        JoinRequestInput: {
+            token: string;
+            /** @description アカウントの表示名になる(全チーム共通) */
+            display_name: string;
+            /** @description ひとこと(任意)。例:「○年 △△の母です」 */
+            message?: string | null;
+        };
+        JoinRequestSubmitted: {
+            /** @enum {string} */
+            status: "pending";
+            team: {
+                name: string;
+            };
+        };
+        JoinRequest: {
+            id: number;
+            display_name: string | null;
+            message: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ApproveJoinRequestInput: {
+            roles: ("parent" | "coach")[];
         };
     };
     responses: {
         /** @description ログインしていない、またはセッションが切れた(AC-000-02、AC-001-07) */
         Unauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Message"];
+            };
+        };
+        /** @description この操作の権限がない(代表・役員だけの操作など。AC-002-04) */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Message"];
+            };
+        };
+        /** @description 招待リンクが期限切れ・無効化・存在しない(区別しない。AC-002-07) */
+        InvalidInvitation: {
             headers: {
                 [name: string]: unknown;
             };
@@ -315,6 +562,8 @@ export interface components {
     parameters: {
         /** @description チームID(ULID) */
         TeamId: string;
+        /** @description 参加申請のID */
+        JoinRequestId: number;
     };
     requestBodies: never;
     headers: never;
@@ -349,7 +598,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EmailInput"];
+                "application/json": components["schemas"]["LoginLinkInput"];
             };
         };
         responses: {
@@ -386,7 +635,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Me"];
+                    "application/json": components["schemas"]["LoginResult"];
                 };
             };
             410: components["responses"]["LinkExpired"];
@@ -579,6 +828,265 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 今の招待リンク */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    issueInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 発行した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
+    revokeInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 無効にした */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
+    listJoinRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承認待ちの申請 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        join_requests: components["schemas"]["JoinRequest"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    approveJoinRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 参加申請のID */
+                joinRequest: components["parameters"]["JoinRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveJoinRequestInput"];
+            };
+        };
+        responses: {
+            /** @description 承認した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            /** @description 承認待ちの申請がない(承認・却下済みを含む)、または所属していないチーム */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    rejectJoinRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 参加申請のID */
+                joinRequest: components["parameters"]["JoinRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 却下した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            /** @description 承認待ちの申請がない(承認・却下済みを含む)、または所属していないチーム */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
+    previewInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenInput"];
+            };
+        };
+        responses: {
+            /** @description リンクのチーム */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreview"];
+                };
+            };
+            410: components["responses"]["InvalidInvitation"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    applyToTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestInput"];
+            };
+        };
+        responses: {
+            /** @description すでに承認待ちの申請がある */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinRequestSubmitted"];
+                };
+            };
+            /** @description 申請した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinRequestSubmitted"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            /** @description すでにこのチームのメンバー */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        team_id: string;
+                    };
+                };
+            };
+            410: components["responses"]["InvalidInvitation"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
 }

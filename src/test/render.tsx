@@ -52,7 +52,8 @@ export const team = (overrides: Partial<Team> = {}): Team => ({
   id: '01jc9zb4x7q2n6r8t0v2w4y6z8',
   name: 'あおば台FC U-10',
   sport: 'soccer',
-  role: 'representative',
+  roles: ['representative'],
+  permissions: { manage_invitation: true, review_join_requests: true },
   ...overrides,
 })
 
@@ -61,6 +62,7 @@ export const me = (overrides: Partial<Me> = {}): Me => ({
   display_name: '小田 裕貴',
   needs_display_name: false,
   teams: [],
+  join_requests: [],
   ...overrides,
 })
 

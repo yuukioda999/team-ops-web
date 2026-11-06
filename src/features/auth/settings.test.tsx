@@ -1,7 +1,7 @@
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { renderAt, signedIn, signedOut } from '../../test/render.tsx'
+import { me, renderAt, signedIn, signedOut } from '../../test/render.tsx'
 
 describe('アカウント設定', () => {
   it('AC-001-08 changes the display name', async () => {
@@ -75,22 +75,45 @@ describe('メールアドレス変更の確定', () => {
   })
 
   it('D5 requires the requester to log in first, then comes back to confirm in the same tab', async () => {
-    const { router } = renderAt('/settings/email/verify?token=change-token', {
+    const changeToken = 'c'.repeat(64)
+    const { router, calls } = renderAt(`/settings/email/verify?token=${changeToken}`, {
       'GET /api/me': signedOut,
+      'POST /api/auth/login-links': { status: 202, body: { message: 'メールを送信しました' } },
       'POST /api/auth/login-links/consume': signedIn(),
       'POST /api/me/email-changes/consume': signedIn({ email: 'new@example.invalid' }),
     })
 
     expect(await screen.findByRole('heading', { name: 'メールアドレスでログイン' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('') // the token is not in the login page's URL (D7)
-    // the login link may open in another tab, which cannot come back here: say what to do
-    expect(screen.getByText(/ログインしたら、もう一度メールのリンクを開いてください/)).toBeInTheDocument()
+    // the way back travels with the login link, so another tab or app can come back too (AC-001-19)
+    await userEvent.type(screen.getByLabelText('メールアドレス'), 'coach@example.invalid')
+    await userEvent.click(screen.getByRole('button', { name: 'ログイン用のリンクを送る' }))
+    await screen.findByRole('heading', { name: 'メールを送信しました' })
+    expect(calls.find((c) => c.path === '/api/auth/login-links')?.body).toEqual({
+      email: 'coach@example.invalid',
+      return_to: `/settings/email/verify?token=${changeToken}`,
+    })
 
     // the user opens the login link from the mail
     await act(() => router.navigate('/login/verify?token=login-token'))
     await userEvent.click(await screen.findByRole('button', { name: 'ログインする' }))
 
     await userEvent.click(await screen.findByRole('button', { name: 'メールアドレスを変更する' }))
+    expect(await screen.findByRole('heading', { name: 'メールアドレスを変更しました' })).toBeInTheDocument()
+  })
+
+  it('AC-001-19 the login link opened in another tab comes back to the confirmation', async () => {
+    const changeToken = 'c'.repeat(64)
+    sessionStorage.clear() // a new tab has nothing saved
+    renderAt('/login/verify?token=login-token', {
+      'GET /api/me': signedOut,
+      'POST /api/auth/login-links/consume': { status: 200, body: { ...me(), return_to: `/settings/email/verify?token=${changeToken}` } },
+      'POST /api/me/email-changes/consume': signedIn({ email: 'new@example.invalid' }),
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'ログインする' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'メールアドレスを変更する' }))
+
     expect(await screen.findByRole('heading', { name: 'メールアドレスを変更しました' })).toBeInTheDocument()
   })
 

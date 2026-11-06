@@ -5,7 +5,7 @@ import { Loading } from '../auth/guards.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { useMe } from '../auth/session-context.ts'
-import { ROLE_LABELS, SPORT_LABELS } from './sports.ts'
+import { rolesLabel, SPORT_LABELS } from './sports.ts'
 import { TeamSwitcher } from './TeamSwitcher.tsx'
 
 type State = { status: 'loading' } | { status: 'ready'; team: Team } | { status: 'not-found' } | { status: 'error' }
@@ -72,11 +72,28 @@ function TeamHome({ teamId }: { teamId: string }) {
       account
       headerExtra={<TeamSwitcher teams={me.teams} currentId={team.id} />}
     >
-      <Panel tag={SPORT_LABELS[team.sport]} meta={`あなたの役割:${ROLE_LABELS[team.role]}`} title={team.name} label="チーム">
+      <Panel tag={SPORT_LABELS[team.sport]} meta={`あなたの役割:${rolesLabel(team.roles)}`} title={team.name} label="チーム">
         <p className="panel__text">
           {me.display_name}さん、ようこそ。{me.teams.length > 1 ? `${me.teams.length}チームに所属しています。右上のボタンで切り替えられます。` : ''}
         </p>
       </Panel>
+      {(team.permissions.manage_invitation || team.permissions.review_join_requests) && (
+        <section className="sheet" aria-labelledby="members-title">
+          <h2 id="members-title" className="sheet__title">
+            メンバー
+          </h2>
+          {team.permissions.manage_invitation && (
+            <Link to={`/teams/${team.id}/invitation`} className="button button--accent">
+              メンバーを招待する
+            </Link>
+          )}
+          {team.permissions.review_join_requests && (
+            <Link to={`/teams/${team.id}/join-requests`} className="button button--secondary">
+              承認待ちの申請を見る
+            </Link>
+          )}
+        </section>
+      )}
     </PageFrame>
   )
 }
