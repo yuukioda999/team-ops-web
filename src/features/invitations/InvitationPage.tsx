@@ -125,8 +125,9 @@ function InvitationManager({ team }: { team: Team }) {
             リンクをコピーする
           </button>
           {qr !== null && <img className="invite__qr" src={qr} alt="招待リンクのQRコード" width={200} height={200} />}
+          <p className="sheet__text">リンクを発行し直すか無効にすると、今のリンクからは申請できなくなります。</p>
           <button type="button" className="button button--secondary" onClick={() => void issue()} disabled={busy}>
-            新しいリンクを発行する(今のリンクは使えなくなります)
+            新しいリンクを発行する
           </button>
           <button type="button" className="button button--secondary" onClick={() => void revoke()} disabled={busy}>
             リンクを無効にする
