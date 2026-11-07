@@ -432,6 +432,112 @@ export interface paths {
         patch: operations["updateScheduledNotice"];
         trace?: never;
     };
+    "/api/teams/{team}/notices/{notice}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 既読・配信状況
+         * @description 代表・役員、または作成者のコーチだけ(AC-006-04・10)。送信済みのお知らせだけで、それ以外は404です。
+         *     宛先数・既読数・未読数と、メールの状態ごとの人数を返します。送信待ちが残っていれば `state` は sending です(AC-006-07)。
+         *     `reminders` は再通知できるかと、できない理由(interval:1時間以内、max:3回済み、no_unread:未読の人がいない)です。
+         */
+        get: operations["getNoticeStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/{notice}/status/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 未読の人
+         * @description 代表・役員、または作成者のコーチだけ(AC-006-05)。今もチームにいる人を表示名の順に返します。チームを抜けた人は `former_members` に人数だけ返します。
+         */
+        get: operations["listUnreadNoticeRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/{notice}/status/failures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * メールが届かなかった・送らなかった人
+         * @description 代表・役員、または作成者のコーチだけ(AC-006-06)。`reason` は理由のコードで、画面で利用者向けの言葉に直します。
+         *     failed のとき notify-relay の error_code(invalid_address、provider_rejected、provider_unavailable、rate_limited、expired)、
+         *     skipped のとき undeliverable_address(メールが届かないアドレス)、restricted(宛先を .invalid に限る環境)、expired です。
+         */
+        get: operations["listFailedNoticeRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/{notice}/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 未読の人に再通知する
+         * @description 代表・役員、または作成者のコーチだけ(AC-006-11)。実行時点で未読の、今もチームにいる人に、件名に【再通知】を付けたメールを送ります。
+         *     メールが届かないアドレスの人などは除き、その人数を `excluded` で返します(AC-006-14)。
+         *     前回から1時間以内、3回済み、未読の人がいないときは 409 です(AC-006-12・13・15)。
+         */
+        post: operations["sendNoticeReminder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{team}/invitation": {
         parameters: {
             query?: never;
@@ -716,6 +822,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/internal/notify-relay/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * notify-relay からの送信結果(webhook)
+         * @description notify-relay の deliveryResults・deliveryCompleted の受け口です(ADR-0019)。セッションではなく署名で確かめ、違えば 401 です。
+         *     同じ `event_id` は2回処理せず、204 を返します。お知らせのメールなら、宛先ごとの状態を更新します(AC-006-08)。
+         */
+        post: operations["receiveRelayEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invitations/preview": {
         parameters: {
             query?: never;
@@ -850,6 +977,75 @@ export interface components {
             /** @description 公開の時点で届いた人数(予約中は0) */
             recipient_count: number;
             author_display_name: string | null;
+            /** @description 自分宛ての一覧で、まだ開いていない(AC-006-03)。それ以外は false */
+            unread: boolean;
+            /** @description 自分が作成した。画面で配信状況への導線を出すかに使う(判定は API で行う) */
+            mine: boolean;
+        };
+        NoticeDeliveryStatus: {
+            /** @description お知らせの題名(状況の画面は詳細を開かずに出す。詳細を開くと既読になるため) */
+            title: string;
+            /** @enum {string} */
+            state: "sending" | "done";
+            /** @description 送信時点の宛先数 */
+            recipients: number;
+            read: number;
+            unread: number;
+            /** @description 未読のうち今もチームにいる人(再通知が届く人) */
+            unread_members: number;
+            /** @description 送信済み(受信側のサーバーが受け付けた) */
+            delivered: number;
+            /** @description 送信待ち */
+            pending: number;
+            failed: number;
+            /** @description 送らなかった */
+            skipped: number;
+            reminders: {
+                sent: number;
+                max: number;
+                available: boolean;
+                /** @enum {string|null} */
+                reason: "interval" | "max" | "no_unread" | null;
+                /**
+                 * Format: date-time
+                 * @description reason が interval のとき、次に実行できる時刻
+                 */
+                next_available_at: string | null;
+            };
+        };
+        NoticeRecipientName: {
+            display_name: string | null;
+        };
+        NoticeFailedRecipient: {
+            display_name: string | null;
+            /** @enum {string} */
+            status: "failed" | "skipped";
+            reason: string | null;
+        };
+        RelayEvent: {
+            event_id: string;
+            /** @enum {string} */
+            type: "delivery.results" | "delivery.completed";
+            delivery_id: string;
+            dedupe_key: string;
+            results?: {
+                recipient_ref: string;
+                /** @enum {string} */
+                status: "delivered" | "failed" | "skipped";
+                error_code?: string | null;
+                attempts?: number;
+                /** Format: date-time */
+                occurred_at: string;
+            }[];
+            counts?: {
+                delivered?: number;
+                failed?: number;
+                skipped?: number;
+            };
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            sent_at?: string;
         };
         NoticeEnvelope: {
             notice: components["schemas"]["Notice"];
@@ -912,6 +1108,8 @@ export interface components {
             display_name: string | null;
             /** @description true なら表示名の入力画面に進む */
             needs_display_name: boolean;
+            /** @description お知らせのメールがアドレスの問題で届かなかった。アドレスを変えるまでお知らせのメールを送らない(AC-006-16・17) */
+            email_undeliverable: boolean;
             teams: components["schemas"]["TeamSummary"][];
             /** @description 自分の参加申請のうち、承認待ちと承認されなかったもの(AC-002-09・13)。承認されたものは teams に入る */
             join_requests: components["schemas"]["MyJoinRequest"][];
@@ -1095,6 +1293,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description 前回から1時間以内、3回済み、または未読の人がいない(AC-006-12・13・15)。`errors.reminder` に理由が入る */
+        ReminderUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ValidationError"];
+            };
+        };
         /** @description 送信済み・取り消し済みのお知らせは編集・取り消しできない(AC-005-06) */
         NoticeNotScheduled: {
             headers: {
@@ -1866,6 +2073,137 @@ export interface operations {
             422: components["responses"]["ValidationFailed"];
         };
     };
+    getNoticeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 状況 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status: components["schemas"]["NoticeDeliveryStatus"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listUnreadNoticeRecipients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 未読の人 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        members: components["schemas"]["NoticeRecipientName"][];
+                        /** @description チームを抜けた人の人数(表示名は返さない) */
+                        former_members: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listFailedNoticeRecipients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 届かなかった人 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        members: components["schemas"]["NoticeFailedRecipient"][];
+                        /** @description チームを抜けた人の人数(表示名は返さない) */
+                        former_members: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    sendNoticeReminder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 再通知した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reminder: {
+                            /** @description 何回目か(1〜3) */
+                            number: number;
+                            sent: number;
+                            excluded: number;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["ReminderUnavailable"];
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
     getInvitation: {
         parameters: {
             query?: never;
@@ -2356,6 +2694,65 @@ export interface operations {
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
+        };
+    };
+    receiveRelayEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelayEvent"];
+            };
+        };
+        responses: {
+            /** @description 受け取った(重複していた場合も) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 時刻がないか、5分を超えてずれている(notify-relay は送り直す) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            /** @description 鍵IDか署名が正しくない(notify-relay は送り直さず、鍵の設定ミスとしてアラートを出す) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            /** @description 本文が1MBを超える */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            422: components["responses"]["ValidationFailed"];
+            /** @description 受け取る側の鍵が設定されていない(notify-relay は送り直す) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
         };
     };
     previewInvitation: {

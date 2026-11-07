@@ -168,9 +168,12 @@ function LatestNotices({ teamId }: { teamId: string }) {
   return (
     <ul className="notice-list" aria-label="新しいお知らせ">
       {notices.map((n) => (
-        <li key={n.id} className="notice-list__item">
+        <li key={n.id} className={n.unread ? 'notice-list__item notice-list__item--unread' : 'notice-list__item'}>
           <Link to={`/teams/${teamId}/notices/${n.id}`} className="notice-list__link">
-            <span className="notice-list__title">{n.title}</span>
+            <span className="notice-list__title">
+              {n.unread && <span className="unread-mark">未読</span>}
+              {n.title}
+            </span>
             <span className="notice-list__meta">
               <time dateTime={n.published_at ?? undefined}>{formatDateTime(n.published_at)}</time>
             </span>

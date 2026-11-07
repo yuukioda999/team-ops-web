@@ -115,6 +115,7 @@ export const me = (overrides: Partial<Me> = {}): Me => ({
   email: 'coach@example.invalid',
   display_name: '小田 裕貴',
   needs_display_name: false,
+  email_undeliverable: false,
   teams: [],
   join_requests: [],
   ...overrides,
