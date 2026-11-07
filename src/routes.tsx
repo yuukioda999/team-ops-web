@@ -13,6 +13,11 @@ import { AuditLogPage } from './features/members/AuditLogPage.tsx'
 import { MemberPage } from './features/members/MemberPage.tsx'
 import { MembersPage } from './features/members/MembersPage.tsx'
 import { TeamSettingsPage } from './features/teams/TeamSettingsPage.tsx'
+import { EditNoticePage } from './features/notices/EditNoticePage.tsx'
+import { NewNoticePage } from './features/notices/NewNoticePage.tsx'
+import { NoticePage } from './features/notices/NoticePage.tsx'
+import { NoticesPage } from './features/notices/NoticesPage.tsx'
+import { ScheduledNoticesPage } from './features/notices/ScheduledNoticesPage.tsx'
 import { ImportPage } from './features/players/ImportPage.tsx'
 import { PlayerPage } from './features/players/PlayerPage.tsx'
 import { RosterPage } from './features/players/RosterPage.tsx'
@@ -39,6 +44,11 @@ export const routes: RouteObject[] = [
       { path: 'teams/:teamId', element: <RequireSignedIn><TeamHomePage /></RequireSignedIn> },
       { path: 'teams/:teamId/invitation', element: <RequireSignedIn><InvitationPage /></RequireSignedIn> },
       { path: 'teams/:teamId/join-requests', element: <RequireSignedIn><JoinRequestsPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/notices', element: <RequireSignedIn><NoticesPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/notices/new', element: <RequireSignedIn><NewNoticePage /></RequireSignedIn> },
+      { path: 'teams/:teamId/notices/scheduled', element: <RequireSignedIn><ScheduledNoticesPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/notices/:noticeId', element: <RequireSignedIn><NoticePage /></RequireSignedIn> },
+      { path: 'teams/:teamId/notices/:noticeId/edit', element: <RequireSignedIn><EditNoticePage /></RequireSignedIn> },
       { path: 'teams/:teamId/members', element: <RequireSignedIn><MembersPage /></RequireSignedIn> },
       { path: 'teams/:teamId/members/:membershipId', element: <RequireSignedIn><MemberPage /></RequireSignedIn> },
       { path: 'teams/:teamId/settings', element: <RequireSignedIn><TeamSettingsPage /></RequireSignedIn> },

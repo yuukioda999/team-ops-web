@@ -78,6 +78,19 @@ function TeamHome({ teamId }: { teamId: string }) {
           {me.display_name}さん、ようこそ。{me.teams.length > 1 ? `${me.teams.length}チームに所属しています。右上のボタンで切り替えられます。` : ''}
         </p>
       </Panel>
+      <section className="sheet" aria-labelledby="notices-title">
+        <h2 id="notices-title" className="sheet__title">
+          お知らせ
+        </h2>
+        <Link to={`/teams/${team.id}/notices`} className="button button--accent">
+          お知らせを見る
+        </Link>
+        {team.permissions.create_notices && (
+          <Link to={`/teams/${team.id}/notices/new`} className="button button--secondary">
+            お知らせを書く
+          </Link>
+        )}
+      </section>
       {canOpenRoster(team) && (
         <section className="sheet" aria-labelledby="roster-title">
           <h2 id="roster-title" className="sheet__title">

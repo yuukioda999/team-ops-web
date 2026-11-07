@@ -82,6 +82,8 @@ export function permissions(on: Partial<Team['permissions']> = {}): Team['permis
     manage_roles: false,
     remove_members: false,
     view_audit_logs: false,
+    create_notices: false,
+    manage_all_notices: false,
     ...on,
   }
 }
@@ -103,6 +105,8 @@ export const team = (overrides: Partial<Team> = {}): Team => ({
     manage_roles: true,
     remove_members: true,
     view_audit_logs: true,
+    create_notices: true,
+    manage_all_notices: true,
   }),
   ...overrides,
 })
