@@ -473,7 +473,7 @@ export interface paths {
         };
         /**
          * 未読の人
-         * @description 代表・役員、または作成者のコーチだけ(AC-006-05)。表示名の順に並べます。チームを抜けた人は `member` が false です。
+         * @description 代表・役員、または作成者のコーチだけ(AC-006-05)。今もチームにいる人を表示名の順に返します。チームを抜けた人は `former_members` に人数だけ返します。
          */
         get: operations["listUnreadNoticeRecipients"];
         put?: never;
@@ -991,6 +991,8 @@ export interface components {
             recipients: number;
             read: number;
             unread: number;
+            /** @description 未読のうち今もチームにいる人(再通知が届く人) */
+            unread_members: number;
             /** @description 送信済み(受信側のサーバーが受け付けた) */
             delivered: number;
             /** @description 送信待ち */
@@ -1013,12 +1015,9 @@ export interface components {
         };
         NoticeRecipientName: {
             display_name: string | null;
-            /** @description 今もチームにいるか */
-            member: boolean;
         };
         NoticeFailedRecipient: {
             display_name: string | null;
-            member: boolean;
             /** @enum {string} */
             status: "failed" | "skipped";
             reason: string | null;
@@ -1038,7 +1037,11 @@ export interface components {
                 /** Format: date-time */
                 occurred_at: string;
             }[];
-            counts?: Record<string, never>;
+            counts?: {
+                delivered?: number;
+                failed?: number;
+                skipped?: number;
+            };
             /** Format: date-time */
             completed_at?: string;
             /** Format: date-time */
@@ -2122,6 +2125,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         members: components["schemas"]["NoticeRecipientName"][];
+                        /** @description チームを抜けた人の人数(表示名は返さない) */
+                        former_members: number;
                     };
                 };
             };
@@ -2152,6 +2157,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         members: components["schemas"]["NoticeFailedRecipient"][];
+                        /** @description チームを抜けた人の人数(表示名は返さない) */
+                        former_members: number;
                     };
                 };
             };
@@ -2709,7 +2716,16 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 署名・鍵ID・時刻が正しくない */
+            /** @description 時刻がないか、5分を超えてずれている(notify-relay は送り直す) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            /** @description 鍵IDか署名が正しくない(notify-relay は送り直さず、鍵の設定ミスとしてアラートを出す) */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2718,7 +2734,25 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+            /** @description 本文が1MBを超える */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
             422: components["responses"]["ValidationFailed"];
+            /** @description 受け取る側の鍵が設定されていない(notify-relay は送り直す) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
         };
     };
     previewInvitation: {

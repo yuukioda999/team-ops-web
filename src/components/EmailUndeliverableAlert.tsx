@@ -13,7 +13,8 @@ export function EmailUndeliverableAlert() {
     return null
   }
   return (
-    <div className="alert alert--error undeliverable" role="alert">
+    // 画面を移るたびに読み上げないよう、alert ではなく status にする(常に出ている表示のため)
+    <div className="alert alert--error undeliverable" role="status">
       <p className="undeliverable__text">メールが届いていません。メールアドレスを確認してください。</p>
       <p className="undeliverable__sub">直すまで、お知らせはメールで届かず、アプリだけに届きます。</p>
       {pathname !== '/settings' && (

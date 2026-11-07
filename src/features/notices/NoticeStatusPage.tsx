@@ -38,7 +38,10 @@ export function NoticeStatusPage() {
 type Loaded = {
   status: NoticeDeliveryStatus
   unread: NoticeRecipientName[]
+  /** チームを抜けた人の人数(表示名は返らない) */
+  formerUnread: number
   failures: NoticeFailedRecipient[]
+  formerFailures: number
 }
 
 type Result = { kind: 'ready'; data: Loaded } | { kind: 'missing' } | { kind: 'denied' } | { kind: 'failed'; message: string }
@@ -56,7 +59,16 @@ async function load(teamId: string, noticeId: number): Promise<Result> {
   if (status.data === undefined || unread.data === undefined || failures.data === undefined) {
     return { kind: 'failed', message: errorMessage(status.error ?? unread.error ?? failures.error) }
   }
-  return { kind: 'ready', data: { status: status.data.status, unread: unread.data.members, failures: failures.data.members } }
+  return {
+    kind: 'ready',
+    data: {
+      status: status.data.status,
+      unread: unread.data.members,
+      formerUnread: unread.data.former_members,
+      failures: failures.data.members,
+      formerFailures: failures.data.former_members,
+    },
+  }
 }
 
 function NoticeStatus({ team, noticeId }: { team: Team; noticeId: number }) {
@@ -135,10 +147,10 @@ function NoticeStatus({ team, noticeId }: { team: Team; noticeId: number }) {
     )
   }
 
-  const { status, unread, failures } = result.data
+  const { status, unread, formerUnread, failures, formerFailures } = result.data
   const title = status.title
   const reminders = status.reminders
-  const unreadMembers = unread.filter((m) => m.member).length
+  const unreadMembers = status.unread_members
 
   return (
     <PageFrame title={team.name} pageTitle={`配信状況:${title}`} home={`/teams/${team.id}`} signedInAs={me.email} account>
@@ -219,17 +231,17 @@ function NoticeStatus({ team, noticeId }: { team: Team; noticeId: number }) {
           未読の人({unread.length}人)
         </h2>
         {unread.length === 0 ? (
-          <p className="sheet__text">全員が読みました。</p>
+          <p className="sheet__text">チームにいる人は全員が読みました。</p>
         ) : (
           <ul className="name-list" aria-labelledby="unread-title">
             {unread.map((m, i) => (
               <li key={i} className="name-list__item">
                 {m.display_name ?? '(表示名なし)'}
-                {!m.member && <span className="name-list__note">チームにいません</span>}
               </li>
             ))}
           </ul>
         )}
+        {formerUnread > 0 && <p className="field__hint">ほかに、チームを抜けた未読の人が{formerUnread}人います。</p>}
       </section>
 
       <section className="sheet" aria-labelledby="failed-title">
@@ -242,15 +254,13 @@ function NoticeStatus({ team, noticeId }: { team: Team; noticeId: number }) {
           <ul className="name-list" aria-labelledby="failed-title">
             {failures.map((m, i) => (
               <li key={i} className="name-list__item name-list__item--stacked">
-                <span>
-                  {m.display_name ?? '(表示名なし)'}
-                  {!m.member && <span className="name-list__note">チームにいません</span>}
-                </span>
+                <span>{m.display_name ?? '(表示名なし)'}</span>
                 <span className="name-list__reason">{deliveryReasonLabel(m.status, m.reason)}</span>
               </li>
             ))}
           </ul>
         )}
+        {formerFailures > 0 && <p className="field__hint">ほかに、チームを抜けた人が{formerFailures}人います。</p>}
         <p className="field__hint">お知らせはアプリには届いています。メールアドレスの確認は、本人に声をかけてください。</p>
       </section>
       {back}

@@ -30,6 +30,7 @@ const status = (overrides: Partial<NoticeDeliveryStatus> = {}): NoticeDeliverySt
   recipients: 12,
   read: 8,
   unread: 4,
+  unread_members: 1,
   delivered: 10,
   pending: 0,
   failed: 1,
@@ -45,19 +46,18 @@ const statusHandlers = (s: NoticeDeliveryStatus = status()) => ({
   [`GET ${BASE}/notices/7/status/unread`]: {
     status: 200,
     body: {
-      members: [
-        { display_name: 'あべ', member: true },
-        { display_name: 'うえだ', member: false },
-      ],
+      members: [{ display_name: 'あべ' }],
+      former_members: 1,
     },
   },
   [`GET ${BASE}/notices/7/status/failures`]: {
     status: 200,
     body: {
       members: [
-        { display_name: 'いとう', member: true, status: 'failed', reason: 'invalid_address' },
-        { display_name: 'えのき', member: true, status: 'skipped', reason: 'undeliverable_address' },
+        { display_name: 'いとう', status: 'failed', reason: 'invalid_address' },
+        { display_name: 'えのき', status: 'skipped', reason: 'undeliverable_address' },
       ],
+      former_members: 0,
     },
   },
 })
@@ -65,7 +65,7 @@ const statusHandlers = (s: NoticeDeliveryStatus = status()) => ({
 describe('既読', () => {
   afterEach(() => sessionStorage.clear())
 
-  it('AC-006-03 unread notices carry a mark in the list and on the team home', async () => {
+  it('AC-006-03 unread notices carry a mark in the list', async () => {
     const list = { notices: [notice({ id: 8, title: '雨天中止', unread: true }), notice()], next_before: null }
     renderAt(`/teams/${U10.id}/notices`, {
       'GET /api/me': signedIn({ teams: [parentTeam] }),
@@ -74,6 +74,19 @@ describe('既読', () => {
     })
 
     const items = within(await screen.findByRole('list', { name: 'お知らせ' })).getAllByRole('listitem')
+    expect(within(items[0]).getByText('未読')).toBeInTheDocument()
+    expect(within(items[1]).queryByText('未読')).not.toBeInTheDocument()
+  })
+
+  it('AC-006-03 unread notices carry a mark on the team home', async () => {
+    const latest = { notices: [notice({ id: 8, title: '雨天中止', unread: true }), notice()], next_before: null }
+    renderAt(`/teams/${U10.id}`, {
+      'GET /api/me': signedIn({ teams: [parentTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: parentTeam },
+      [`GET ${BASE}/notices`]: { status: 200, body: latest },
+    })
+
+    const items = within(await screen.findByRole('list', { name: '新しいお知らせ' })).getAllByRole('listitem')
     expect(within(items[0]).getByText('未読')).toBeInTheDocument()
     expect(within(items[1]).queryByText('未読')).not.toBeInTheDocument()
   })
@@ -95,9 +108,23 @@ describe('メールが届いていない', () => {
       [`GET ${BASE}/notices`]: { status: 200, body: { notices: [], next_before: null } },
     })
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('メールが届いていません。メールアドレスを確認してください。')
+    const text = await screen.findByText('メールが届いていません。メールアドレスを確認してください。')
+    const alert = text.closest('[role="status"]') as HTMLElement
+    expect(alert).not.toBeNull()
     expect(within(alert).getByRole('link', { name: 'メールアドレスを変更する' })).toHaveAttribute('href', '/settings')
+  })
+
+  it('AC-006-17 the notice disappears after the address is changed', async () => {
+    renderAt('/settings/email/verify?token=abc', {
+      'GET /api/me': signedIn({ teams: [parentTeam], email_undeliverable: true }),
+      'POST /api/me/email-changes/consume': signedIn({ teams: [parentTeam], email: 'new@example.invalid', email_undeliverable: false }),
+    })
+
+    expect(await screen.findByText('メールが届いていません。メールアドレスを確認してください。')).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'メールアドレスを変更する' }))
+
+    expect(await screen.findByRole('heading', { name: 'メールアドレスを変更しました' })).toBeInTheDocument()
+    expect(screen.queryByText(/メールが届いていません/)).not.toBeInTheDocument()
   })
 
   it('AC-006-17 shows nothing once the address works', async () => {
@@ -137,9 +164,12 @@ describe('配信状況', () => {
 
     expect(await screen.findByLabelText('宛先12人のうち、既読8人、未読4人')).toBeInTheDocument()
     expect(screen.getByText('メールの送信は終わりました')).toBeInTheDocument()
-    const unread = within(screen.getByRole('list', { name: '未読の人(2人)' })).getAllByRole('listitem')
+    const unread = within(screen.getByRole('list', { name: '未読の人(1人)' })).getAllByRole('listitem')
+    expect(unread).toHaveLength(1)
     expect(unread[0]).toHaveTextContent('あべ')
-    expect(unread[1]).toHaveTextContent('うえだチームにいません')
+    // チームを抜けた人は表示名を出さず人数だけ(未読数4のうち、再通知が届くのは1人)
+    expect(screen.getByText('ほかに、チームを抜けた未読の人が1人います。')).toBeInTheDocument()
+    expect(screen.queryByText('うえだ')).not.toBeInTheDocument()
     const failed = within(screen.getByRole('list', { name: 'メールが届かなかった人(2人)' })).getAllByRole('listitem')
     expect(failed[0]).toHaveTextContent('いとうメールアドレスが存在しない可能性があります')
     expect(failed[1]).toHaveTextContent('えのき以前メールが届かなかったアドレスのため送っていません')
@@ -199,7 +229,7 @@ describe('配信状況', () => {
     expect(screen.getByRole('button', { name: /再通知する/ })).toBeDisabled()
     cleanup()
 
-    renderAt(`/teams/${U10.id}/notices/7/status`, statusHandlers(status({ read: 12, unread: 0, reminders: { sent: 0, max: 3, available: false, reason: 'no_unread', next_available_at: null } })))
+    renderAt(`/teams/${U10.id}/notices/7/status`, statusHandlers(status({ read: 12, unread: 0, unread_members: 0, reminders: { sent: 0, max: 3, available: false, reason: 'no_unread', next_available_at: null } })))
     expect(await screen.findByText('未読の人がいないため、再通知できません。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /再通知する/ })).toBeDisabled()
   })
