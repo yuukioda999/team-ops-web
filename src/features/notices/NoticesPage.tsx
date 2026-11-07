@@ -9,7 +9,7 @@ import { useMe } from '../auth/session-context.ts'
 import { TeamPageGate } from '../invitations/TeamPageGate.tsx'
 import { formatDateTime } from './notice-format.ts'
 
-/** 自分宛てのお知らせの一覧(AC-005-14)。50件ずつ、古いものは続けて読み込む(AC-005-19) */
+/** 自分宛てのお知らせの一覧(AC-005-14)。50件ずつ、古いものは続けて読み込む(AC-005-19)。未読に目印(AC-006-03) */
 export function NoticesPage() {
   const { teamId = '' } = useParams()
   return (
@@ -91,9 +91,12 @@ function Notices({ team }: { team: Team }) {
       {notices !== null && notices.length > 0 && (
         <ul className="notice-list" aria-label="お知らせ">
           {notices.map((n) => (
-            <li key={n.id} className="notice-list__item">
+            <li key={n.id} className={n.unread ? 'notice-list__item notice-list__item--unread' : 'notice-list__item'}>
               <Link to={`/teams/${team.id}/notices/${n.id}`} className="notice-list__link">
-                <span className="notice-list__title">{n.title}</span>
+                <span className="notice-list__title">
+                  {n.unread && <span className="unread-mark">未読</span>}
+                  {n.title}
+                </span>
                 <span className="notice-list__meta">
                   <time dateTime={n.published_at ?? undefined}>{formatDateTime(n.published_at)}</time>
                   {n.author_display_name !== null && ` / ${n.author_display_name}`}

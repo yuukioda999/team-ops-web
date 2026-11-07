@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Crest } from './Crest.tsx'
+import { EmailUndeliverableAlert } from './EmailUndeliverableAlert.tsx'
 
 type Props = {
   /** Shown in the header next to the crest. */
@@ -44,7 +45,10 @@ export function PageFrame({ title, pageTitle, home = '/', signedInAs, account = 
           ログイン中:<strong>{signedInAs}</strong>
         </p>
       )}
-      <main className="stack">{children}</main>
+      <main className="stack">
+        {signedInAs !== undefined && <EmailUndeliverableAlert />}
+        {children}
+      </main>
     </div>
   )
 }
