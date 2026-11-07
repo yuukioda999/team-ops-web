@@ -5,6 +5,7 @@ import { Loading } from '../auth/guards.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { useMe } from '../auth/session-context.ts'
+import { canOpenRoster } from '../players/grades.ts'
 import { rolesLabel, SPORT_LABELS } from './sports.ts'
 import { TeamSwitcher } from './TeamSwitcher.tsx'
 
@@ -77,6 +78,16 @@ function TeamHome({ teamId }: { teamId: string }) {
           {me.display_name}さん、ようこそ。{me.teams.length > 1 ? `${me.teams.length}チームに所属しています。右上のボタンで切り替えられます。` : ''}
         </p>
       </Panel>
+      {canOpenRoster(team) && (
+        <section className="sheet" aria-labelledby="roster-title">
+          <h2 id="roster-title" className="sheet__title">
+            名簿
+          </h2>
+          <Link to={`/teams/${team.id}/players`} className="button button--accent">
+            {team.permissions.view_all_players ? '名簿を見る' : 'お子さんの情報を見る'}
+          </Link>
+        </section>
+      )}
       {(team.permissions.manage_invitation || team.permissions.review_join_requests) && (
         <section className="sheet" aria-labelledby="members-title">
           <h2 id="members-title" className="sheet__title">

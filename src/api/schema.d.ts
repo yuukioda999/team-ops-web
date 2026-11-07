@@ -296,6 +296,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team}/players": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 名簿
+         * @description 代表・役員・コーチは全選手、保護者は自分に紐づく選手だけ(AC-003-08・09)。学年・背番号の順。開くたびに監査ログに残します(AC-003-11)。
+         */
+        get: operations["listPlayers"];
+        put?: never;
+        /**
+         * 選手を登録する
+         * @description 代表・役員だけ。同じ表示名・同じ学年の選手がいても登録し、possible_duplicate を true にします(AC-003-03)。1チーム200人まで(AC-003-04)。
+         */
+        post: operations["createPlayer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/players/{player}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 選手の詳細
+         * @description 保護者が自分に紐づかない選手を指定すると、存在しない場合と同じ404です(AC-003-10)。
+         */
+        get: operations["getPlayer"];
+        put?: never;
+        post?: never;
+        /**
+         * 選手を削除する
+         * @description 代表・役員だけ。行ごと消し、保護者との紐づけも外れます(AC-003-02)。
+         */
+        delete: operations["deletePlayer"];
+        options?: never;
+        head?: never;
+        /**
+         * 選手の情報を編集する
+         * @description 代表・役員だけ。送った項目だけを変えます(AC-003-02)。
+         */
+        patch: operations["updatePlayer"];
+        trace?: never;
+    };
+    "/api/teams/{team}/players/{player}/guardians": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 紐づける保護者を置き換える
+         * @description 代表・役員だけ。保護者の役割を持つメンバーを4人まで(AC-003-05・07)。空の配列ですべて外します(AC-003-06)。
+         */
+        put: operations["replacePlayerGuardians"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/guardian-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 紐づけられるメンバー
+         * @description 代表・役員だけ。保護者の役割を持つメンバーだけを返します(AC-003-07)。
+         */
+        get: operations["listGuardianCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/players/import/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 取り込み用のテンプレート CSV
+         * @description 代表・役員だけ。見出し(表示名,学年,背番号)と記入例1行。UTF-8(BOM付き)です(AC-003-13)。
+         */
+        get: operations["getPlayerImportTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/players/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CSV を確認する
+         * @description 代表・役員だけ。登録はしません(AC-003-14)。行のエラーと重複の警告を返します(AC-003-15・21)。
+         *     文字コード・1MB・500行・見出しの問題は 422 です(AC-003-16・17)。確定には、返した file_hash と同じファイルを送ります(ADR-0014)。
+         */
+        post: operations["previewPlayerImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/players/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * CSV の取り込みを確定する
+         * @description 代表・役員だけ。確認したファイルと同じか(file_hash)を確かめ、もう一度すべて調べてから一括で登録します。
+         *     1件でもエラーがあれば1件も登録せず、422 の errors.file にエラーを返します(AC-003-15)。取り込んだ件数を監査ログに残します(AC-003-19)。
+         */
+        post: operations["importPlayers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invitations/preview": {
         parameters: {
             query?: never;
@@ -429,6 +608,10 @@ export interface components {
             permissions: {
                 manage_invitation: boolean;
                 review_join_requests: boolean;
+                /** @description 選手の登録・編集・削除、保護者の紐づけ、CSV の取り込み(代表・役員) */
+                manage_players: boolean;
+                /** @description 全選手の名簿を見られる(代表・役員・コーチ)。false なら自分に紐づく選手だけ */
+                view_all_players: boolean;
             };
         };
         MyJoinRequest: {
@@ -483,6 +666,88 @@ export interface components {
         };
         ApproveJoinRequestInput: {
             roles: ("parent" | "coach")[];
+        };
+        /**
+         * @description 未就学・小1〜小6・中1〜中3
+         * @enum {string}
+         */
+        Grade: "preschool" | "e1" | "e2" | "e3" | "e4" | "e5" | "e6" | "j1" | "j2" | "j3";
+        Guardian: {
+            /** @description チームのメンバーのID */
+            membership_id: number;
+            display_name: string | null;
+        };
+        Player: {
+            id: number;
+            display_name: string;
+            grade: components["schemas"]["Grade"];
+            /** @description 背番号 */
+            number: number | null;
+            /** @description 紐づく保護者。保護者が見る場合は、自分の子どもに紐づく保護者だけ */
+            guardians: components["schemas"]["Guardian"][];
+        };
+        Roster: {
+            /**
+             * @description all は全選手、own は自分に紐づく選手だけ
+             * @enum {string}
+             */
+            scope: "all" | "own";
+            players: components["schemas"]["Player"][];
+        };
+        PlayerEnvelope: {
+            player: components["schemas"]["Player"];
+        };
+        PlayerCreated: {
+            player: components["schemas"]["Player"];
+            /** @description 同じ表示名・同じ学年の選手がすでにいた(AC-003-03) */
+            possible_duplicate: boolean;
+        };
+        PlayerInput: {
+            /** @description 前後の空白(全角を含む)は取り除く。改行などの制御文字は使えない */
+            display_name: string;
+            grade: components["schemas"]["Grade"];
+            number?: number | null;
+        };
+        /** @description 送った項目だけを変える */
+        PlayerChanges: {
+            display_name?: string;
+            grade?: components["schemas"]["Grade"];
+            number?: number | null;
+        };
+        GuardiansInput: {
+            membership_ids: number[];
+        };
+        PlayerCsvInput: {
+            /**
+             * Format: binary
+             * @description CSV(UTF-8 か Shift_JIS、1MB・500行まで)。見出しは「表示名,学年,背番号」
+             */
+            file: string;
+        };
+        CsvProblem: {
+            /** @description 行番号(見出しが1行目)。ファイル全体の問題は null */
+            line: number | null;
+            /** @description 列の見出し */
+            column: string | null;
+            /** @description 例:「3行目 学年:『小7』は選べません(未就学、小1〜小6、中1〜中3)」 */
+            message: string;
+        };
+        PlayerImportPreview: {
+            /** @description 確定のときに送る、このファイルの SHA-256 */
+            file_hash: string;
+            /** @description 取り込める行の数 */
+            count: number;
+            /** @description 先頭10行 */
+            rows: {
+                line: number;
+                display_name: string;
+                grade: components["schemas"]["Grade"];
+                number: number | null;
+            }[];
+            /** @description 1件でもあれば確定できない */
+            errors: components["schemas"]["CsvProblem"][];
+            /** @description 重複の可能性(確定はできる。AC-003-21) */
+            warnings: components["schemas"]["CsvProblem"][];
         };
     };
     responses: {
@@ -563,6 +828,8 @@ export interface components {
     parameters: {
         /** @description チームID(ULID) */
         TeamId: string;
+        /** @description 選手のID */
+        PlayerId: number;
         /** @description 参加申請のID */
         JoinRequestId: number;
     };
@@ -1010,6 +1277,315 @@ export interface operations {
                 };
             };
             419: components["responses"]["CsrfExpired"];
+        };
+    };
+    listPlayers: {
+        parameters: {
+            query?: {
+                grade?: components["schemas"]["Grade"];
+                number?: number;
+            };
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 名簿 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roster"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createPlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayerInput"];
+            };
+        };
+        responses: {
+            /** @description 登録した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCreated"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    getPlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 選手 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deletePlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
+    updatePlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayerChanges"];
+            };
+        };
+        responses: {
+            /** @description 編集した */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    replacePlayerGuardians: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description 選手のID */
+                player: components["parameters"]["PlayerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardiansInput"];
+            };
+        };
+        responses: {
+            /** @description 置き換えた */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listGuardianCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 候補 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        candidates: components["schemas"]["Guardian"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPlayerImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description テンプレート */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    previewPlayerImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PlayerCsvInput"];
+            };
+        };
+        responses: {
+            /** @description 確認の結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerImportPreview"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    importPlayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PlayerCsvInput"] & {
+                    /** @description 確認の応答の file_hash */
+                    file_hash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 取り込んだ */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description 登録した選手の数 */
+                        imported: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     previewInvitation: {

@@ -8,7 +8,7 @@ export type Reply = { status: number; body?: unknown } | 'network-error'
 /** "METHOD /path" -> reply, or a function for replies that depend on the request. */
 export type Handlers = Record<string, Reply | ((body: unknown) => Reply | Promise<Reply>)>
 
-export type Call = { method: string; path: string; body: unknown; headers: Headers }
+export type Call = { method: string; path: string; search: string; body: unknown; headers: Headers }
 
 /**
  * Renders the app at a path with a fake API. Unknown requests fail the test.
@@ -23,10 +23,15 @@ export function renderAt(path: string, handlers: Handlers) {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(new URL(String(input), 'http://localhost'), init)
       const url = new URL(request.url, 'http://localhost')
-      const text = request.method === 'GET' ? '' : await request.text()
-      const body = text === '' ? undefined : JSON.parse(text)
+      let body: unknown
+      if ((request.headers.get('Content-Type') ?? '').startsWith('multipart/form-data')) {
+        body = await request.formData()
+      } else {
+        const text = request.method === 'GET' ? '' : await request.text()
+        body = text === '' ? undefined : JSON.parse(text)
+      }
       const key = `${request.method} ${url.pathname}`
-      calls.push({ method: request.method, path: url.pathname, body, headers: request.headers })
+      calls.push({ method: request.method, path: url.pathname, search: url.search, body, headers: request.headers })
 
       const handler = handlers[key]
       if (handler === undefined) {
@@ -53,7 +58,7 @@ export const team = (overrides: Partial<Team> = {}): Team => ({
   name: 'あおば台FC U-10',
   sport: 'soccer',
   roles: ['representative'],
-  permissions: { manage_invitation: true, review_join_requests: true },
+  permissions: { manage_invitation: true, review_join_requests: true, manage_players: true, view_all_players: true },
   ...overrides,
 })
 
