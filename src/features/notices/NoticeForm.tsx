@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { api, type Grade, type NoticeTargetInput, type Team, type TeamRole } from '../../api/client.ts'
+import { api, errorMessage, withCsrfRetry, type Grade, type NoticeTargetInput, type Team, type TeamRole } from '../../api/client.ts'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { GRADE_LABELS, GRADES } from '../players/grades.ts'
@@ -7,9 +7,17 @@ import { ROLE_LABELS } from '../teams/sports.ts'
 
 const ROLES: TeamRole[] = ['representative', 'officer', 'coach', 'parent']
 
-async function countRecipients(teamId: string, target: NoticeTargetInput): Promise<number | null> {
-  const { data } = await api.POST('/api/teams/{team}/notices/recipient-count', { params: { path: { team: teamId } }, body: { target } })
-  return data?.count ?? null
+type Count = { status: 'counting' } | { status: 'done'; count: number } | { status: 'failed'; message: string }
+
+async function countRecipients(teamId: string, target: NoticeTargetInput, noticeId: number | undefined): Promise<Count> {
+  try {
+    const { data, error } = await withCsrfRetry(() =>
+      api.POST('/api/teams/{team}/notices/recipient-count', { params: { path: { team: teamId } }, body: noticeId === undefined ? { target } : { target, notice_id: noticeId } }),
+    )
+    return data !== undefined ? { status: 'done', count: data.count } : { status: 'failed', message: errorMessage(error) }
+  } catch {
+    return { status: 'failed', message: errorMessage(null) }
+  }
 }
 
 export type NoticeValues = {
@@ -24,11 +32,13 @@ export type NoticeValues = {
 
 /**
  * お知らせの作成・予約の編集のフォーム(AC-005-01・02・09・13)。
- * 宛先を変えるたびに届く人数を API に聞き、0人なら送れない。
+ * 宛先を変えるたびに届く人数を API に聞き、0人なら送れない。数えられなかったら、送る前にもう一度数えてもらう。
+ * 予約の編集では、作成者を送信者として数える(公開のときと同じ)。
  */
 export function NoticeForm({
   team,
   initial,
+  noticeId,
   mode,
   busy,
   errors,
@@ -36,6 +46,8 @@ export function NoticeForm({
 }: {
   team: Team
   initial: NoticeValues
+  /** 編集する予約のID(edit のとき) */
+  noticeId?: number
   /** new:今すぐ送信か予約を選べる。edit:予約の編集 */
   mode: 'new' | 'edit'
   busy: boolean
@@ -44,7 +56,9 @@ export function NoticeForm({
 }) {
   const [values, setValues] = useState<NoticeValues>(initial)
   const [schedule, setSchedule] = useState(mode === 'edit' || initial.scheduled)
-  const [count, setCount] = useState<number | null>(null)
+  const [count, setCount] = useState<Count>({ status: 'counting' })
+  /** もう一度数えるたびに増やす */
+  const [attempt, setAttempt] = useState(0)
   const form = useRef<HTMLFormElement>(null)
   useFocusFirstInvalid(form, errors)
 
@@ -55,21 +69,33 @@ export function NoticeForm({
     // 宛先を続けて変えたとき、前の問い合わせの答えで上書きしない
     const controller = new AbortController()
     if (!nothingChosen) {
-      void countRecipients(team.id, JSON.parse(targetKey) as NoticeTargetInput).then((n) => {
-        if (!controller.signal.aborted) setCount(n)
+      void countRecipients(team.id, JSON.parse(targetKey) as NoticeTargetInput, noticeId).then((result) => {
+        if (!controller.signal.aborted) setCount(result)
       })
     }
     return () => controller.abort()
-  }, [team.id, targetKey, nothingChosen])
-  const shownCount = nothingChosen ? 0 : count
+  }, [team.id, targetKey, nothingChosen, noticeId, attempt])
+  const shown: Count = nothingChosen ? { status: 'done', count: 0 } : count
+  const shownCount = shown.status === 'done' ? shown.count : null
+
+  // 宛先を変えたら、前の宛先の人数は出さない(数え直すまで送れない)
+  function setTarget(target: NoticeTargetInput) {
+    setValues({ ...values, target })
+    setCount({ status: 'counting' })
+  }
 
   function setType(type: NoticeTargetInput['type']) {
-    setValues({ ...values, target: { type, values: [] } })
+    setTarget({ type, values: [] })
   }
 
   function toggleValue(value: string, checked: boolean) {
     const current = values.target.values
-    setValues({ ...values, target: { ...values.target, values: checked ? [...current, value] : current.filter((v) => v !== value) } })
+    setTarget({ ...values.target, values: checked ? [...current, value] : current.filter((v) => v !== value) })
+  }
+
+  function recount() {
+    setCount({ status: 'counting' })
+    setAttempt(attempt + 1)
   }
 
   function submit(event: FormEvent) {
@@ -159,8 +185,19 @@ export function NoticeForm({
         </p>
       )}
       <p className="recipient-count" role="status">
-        {shownCount === null ? '届く人数を数えています' : noRecipients ? '届く人がいません。宛先を選んでください。' : `${shownCount}人に届きます(あなたを含む。同じ人には1通だけ)`}
+        {shown.status === 'counting'
+          ? '届く人数を数えています'
+          : shown.status === 'failed'
+            ? `届く人数を数えられませんでした。${shown.message}`
+            : noRecipients
+              ? '届く人がいません。宛先を選んでください。'
+              : `${shown.count}人に届きます(${mode === 'edit' ? '作成者' : 'あなた'}を含む。同じ人には1通だけ)`}
       </p>
+      {shown.status === 'failed' && (
+        <button type="button" className="button button--secondary" onClick={recount}>
+          もう一度数える
+        </button>
+      )}
       {mode === 'new' && (
         <fieldset className="choices">
           <legend className="choices__legend">送るとき</legend>
@@ -190,7 +227,7 @@ export function NoticeForm({
             onChange={(e) => setValues({ ...values, scheduledAt: e.target.value })}
           />
           <p id="scheduled-at-hint" className="field__hint">
-            5分後から30日後まで。指定した日時まで、宛先の人には表示されません
+            日本時間で、5分後から30日後まで。指定した日時まで、宛先の人には表示されません
           </p>
           {errors.scheduled_at !== undefined && (
             <p id="scheduled-at-error" className="field__error">

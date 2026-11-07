@@ -9,7 +9,7 @@ import { useMe } from '../auth/session-context.ts'
 import { TeamPageGate } from '../invitations/TeamPageGate.tsx'
 import { formatDateTime } from './notice-format.ts'
 
-/** 自分宛てのお知らせの一覧(AC-005-14) */
+/** 自分宛てのお知らせの一覧(AC-005-14)。50件ずつ、古いものは続けて読み込む(AC-005-19) */
 export function NoticesPage() {
   const { teamId = '' } = useParams()
   return (
@@ -24,22 +24,44 @@ function Notices({ team }: { team: Team }) {
   const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [notices, setNotices] = useState<Notice[] | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  const [nextBefore, setNextBefore] = useState<number | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [moreFailure, setMoreFailure] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     void api.GET('/api/teams/{team}/notices', { params: { path: { team: team.id } } }).then(({ data, error }) => {
       if (!active) return
-      if (data !== undefined) setNotices(data.notices)
-      else setFailure(errorMessage(error))
+      if (data !== undefined) {
+        setNotices(data.notices)
+        setNextBefore(data.next_before)
+      } else setFailure(errorMessage(error))
     })
     return () => {
       active = false
     }
   }, [team.id])
 
+  async function loadOlder() {
+    if (nextBefore === null) return
+    setLoadingMore(true)
+    setMoreFailure(null)
+    try {
+      const { data, error } = await api.GET('/api/teams/{team}/notices', { params: { path: { team: team.id }, query: { before: nextBefore } } })
+      if (data !== undefined) {
+        setNotices([...(notices ?? []), ...data.notices])
+        setNextBefore(data.next_before)
+      } else setMoreFailure(errorMessage(error))
+    } catch {
+      setMoreFailure(errorMessage(null))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   return (
     <PageFrame title={team.name} pageTitle="お知らせ" home={`/teams/${team.id}`} signedInAs={me.email} account>
-      <Panel tag="お知らせ" meta={notices !== null ? `${notices.length}件` : undefined} title="お知らせ">
+      <Panel tag="お知らせ" meta={notices !== null ? `${notices.length}件${nextBefore !== null ? '以上' : ''}` : undefined} title="お知らせ">
         <p className="panel__text">あなた宛てに届いたお知らせです。新しい順に並んでいます。</p>
       </Panel>
       {notice !== undefined && <Alert tone="info">{notice}</Alert>}
@@ -80,6 +102,12 @@ function Notices({ team }: { team: Team }) {
             </li>
           ))}
         </ul>
+      )}
+      {moreFailure !== null && <Alert tone="error">{moreFailure}</Alert>}
+      {nextBefore !== null && (
+        <button type="button" className="button button--secondary" disabled={loadingMore} onClick={() => void loadOlder()}>
+          {loadingMore ? '読み込んでいます' : 'さらに古いお知らせを見る'}
+        </button>
       )}
     </PageFrame>
   )

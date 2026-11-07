@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { api, type Team } from '../../api/client.ts'
+import { api, type Notice, type Team } from '../../api/client.ts'
+import { formatDateTime } from '../notices/notice-format.ts'
 import { Loading } from '../auth/guards.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
@@ -82,6 +83,7 @@ function TeamHome({ teamId }: { teamId: string }) {
         <h2 id="notices-title" className="sheet__title">
           お知らせ
         </h2>
+        <LatestNotices teamId={team.id} />
         <Link to={`/teams/${team.id}/notices`} className="button button--accent">
           お知らせを見る
         </Link>
@@ -141,5 +143,40 @@ function TeamHome({ teamId }: { teamId: string }) {
         </section>
       )}
     </PageFrame>
+  )
+}
+
+/** 新しいお知らせ3件。読み込めなかったときは一覧への導線だけを残す */
+function LatestNotices({ teamId }: { teamId: string }) {
+  const [notices, setNotices] = useState<Notice[] | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void api
+      .GET('/api/teams/{team}/notices', { params: { path: { team: teamId } } })
+      .then(({ data }) => {
+        if (active && data !== undefined) setNotices(data.notices.slice(0, 3))
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [teamId])
+
+  if (notices === null) return null
+  if (notices.length === 0) return <p className="sheet__text">まだお知らせはありません。</p>
+  return (
+    <ul className="notice-list" aria-label="新しいお知らせ">
+      {notices.map((n) => (
+        <li key={n.id} className="notice-list__item">
+          <Link to={`/teams/${teamId}/notices/${n.id}`} className="notice-list__link">
+            <span className="notice-list__title">{n.title}</span>
+            <span className="notice-list__meta">
+              <time dateTime={n.published_at ?? undefined}>{formatDateTime(n.published_at)}</time>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

@@ -2,7 +2,8 @@
  * お知らせの本文を表示する。HTML として解釈せず文字のまま出し、http:// と https:// で始まる URL だけをリンクにする
  * (AC-005-16、ADR-0017)。javascript: などはリンクにしない。
  */
-const URL_PATTERN = /(https?:\/\/[^\s<>"'「」、。]+)/g
+// 文字の向きを変える書式文字・ゼロ幅文字(Cf)で URL は終わる。見た目と行き先がずれないように
+const URL_PATTERN = /(https?:\/\/[^\s<>"'「」、。\p{Cf}]+)/gu
 
 export function Linkified({ text }: { text: string }) {
   const parts = text.split(URL_PATTERN)

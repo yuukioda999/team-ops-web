@@ -87,6 +87,7 @@ function EditNotice({ team, noticeId }: { team: Team; noticeId: number }) {
       ) : (
         <NoticeForm
           team={team}
+          noticeId={notice.id}
           mode="edit"
           busy={busy}
           errors={errors}

@@ -331,7 +331,8 @@ export interface paths {
         };
         /**
          * 自分宛てのお知らせ
-         * @description 自分が宛先に含まれる公開済みのお知らせを、新しい順に50件まで返します(AC-005-14)。
+         * @description 自分が宛先に含まれる公開済みのお知らせを、新しい順に50件ずつ返します(AC-005-14・19)。
+         *     続きがあれば `next_before` を返すので、`before` に渡すとそれより古いものを返します。
          */
         get: operations["listNotices"];
         put?: never;
@@ -340,6 +341,7 @@ export interface paths {
          * @description 代表・役員・コーチだけ(AC-005-01・04)。`scheduled_at` がなければ今すぐ公開し、宛先にメールを送り始めます。
          *     `scheduled_at` があれば、その日時まで公開しません(5分後〜30日後、AC-005-09・13)。
          *     宛先は公開の時点の名簿で決め、送信者本人も含みます(AC-005-03・12)。
+         *     1人あたり1時間に10件まで。超えると 429 になります(AC-005-18)。
          */
         post: operations["createNotice"];
         delete?: never;
@@ -363,6 +365,8 @@ export interface paths {
         /**
          * 届く人数
          * @description 代表・役員・コーチだけ。宛先の指定から、実際に届く人数(送信者本人を含む、重複なし)を返します(AC-005-02)。
+         *     予約の編集では `notice_id` を渡すと、そのお知らせの作成者を送信者として数えます(公開のときと同じ)。
+         *     そのお知らせを扱えない人は 403 です。1人あたり1分に30回まで。超えると 429 になります(AC-005-18)。
          */
         post: operations["countNoticeRecipients"];
         delete?: never;
@@ -852,6 +856,11 @@ export interface components {
         };
         NoticeList: {
             notices: components["schemas"]["Notice"][];
+        };
+        MyNoticeList: {
+            notices: components["schemas"]["Notice"][];
+            /** @description 続きがあるとき、次に before に渡す値。なければ null */
+            next_before: number | null;
         };
         /** @description 送った項目だけを変える */
         UpdateTeamInput: {
@@ -1640,7 +1649,10 @@ export interface operations {
     };
     listNotices: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description このお知らせより古いものを返す */
+                before?: number;
+            };
             header?: never;
             path: {
                 /** @description チームID(ULID) */
@@ -1656,12 +1668,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NoticeList"];
+                    "application/json": components["schemas"]["MyNoticeList"];
                 };
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     createNotice: {
@@ -1694,6 +1707,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     countNoticeRecipients: {
@@ -1710,6 +1724,8 @@ export interface operations {
             content: {
                 "application/json": {
                     target: components["schemas"]["NoticeTargetInput"];
+                    /** @description 編集する予約中のお知らせ */
+                    notice_id?: number | null;
                 };
             };
         };
@@ -1730,6 +1746,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     listScheduledNotices: {

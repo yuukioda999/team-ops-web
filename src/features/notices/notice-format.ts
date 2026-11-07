@@ -22,14 +22,26 @@ export function targetLabel(target: Notice['target']): string {
   return target.values.map((v) => ROLE_LABELS[v as TeamRole] ?? v).join('・')
 }
 
-/** datetime-local の値(端末の時刻)を、時差付きの ISO 8601 にする */
+/**
+ * datetime-local の値を日本時間として読み、UTC の ISO 8601 にする(ADR-0017)。
+ * 端末の時間帯の設定に左右されないよう、時差を +09:00 と決めて付ける
+ */
 export function localInputToIso(value: string): string {
-  return new Date(value).toISOString()
+  return new Date(`${value}:00+09:00`).toISOString()
 }
 
-/** ISO 8601 を datetime-local の値(端末の時刻)にする */
+const inputParts = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Tokyo',
+})
+
+/** ISO 8601 を、日本時間の datetime-local の値にする */
 export function isoToLocalInput(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const part = Object.fromEntries(inputParts.formatToParts(new Date(iso)).map((p) => [p.type, p.value]))
+  return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}`
 }

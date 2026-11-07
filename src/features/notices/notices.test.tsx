@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Notice } from '../../api/client.ts'
 import { permissions, renderAt, signedIn, team } from '../../test/render.tsx'
+import { Linkified } from './Linkified.tsx'
+import { isoToLocalInput, localInputToIso } from './notice-format.ts'
+import { render } from '@testing-library/react'
 
 const U10 = team()
 const coachTeam = team({ roles: ['coach'], permissions: permissions({ view_players: true, view_all_players: true, create_notices: true }) })
@@ -24,10 +27,28 @@ const notice = (overrides: Partial<Notice> = {}): Notice => ({
 
 describe('チームのホームの導線', () => {
   it('everyone gets the notice list, and only senders get the compose link', async () => {
-    renderAt(`/teams/${U10.id}`, { 'GET /api/me': signedIn({ teams: [parentTeam] }), [`GET ${BASE}`]: { status: 200, body: parentTeam } })
+    renderAt(`/teams/${U10.id}`, {
+      'GET /api/me': signedIn({ teams: [parentTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: parentTeam },
+      [`GET ${BASE}/notices`]: { status: 200, body: { notices: [], next_before: null } },
+    })
 
     expect(await screen.findByRole('link', { name: 'お知らせを見る' })).toHaveAttribute('href', `/teams/${U10.id}/notices`)
     expect(screen.queryByRole('link', { name: 'お知らせを書く' })).not.toBeInTheDocument()
+    expect(await screen.findByText('まだお知らせはありません。')).toBeInTheDocument()
+  })
+
+  it('AC-005-14 shows the latest three notices on the team home', async () => {
+    const four = [9, 8, 7, 6].map((id) => notice({ id, title: `連絡${id}` }))
+    renderAt(`/teams/${U10.id}`, {
+      'GET /api/me': signedIn({ teams: [parentTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: parentTeam },
+      [`GET ${BASE}/notices`]: { status: 200, body: { notices: four, next_before: null } },
+    })
+
+    const items = within(await screen.findByRole('list', { name: '新しいお知らせ' })).getAllByRole('listitem')
+    expect(items.map((i) => i.querySelector('.notice-list__title')?.textContent)).toEqual(['連絡9', '連絡8', '連絡7'])
+    expect(within(items[0]).getByRole('link')).toHaveAttribute('href', `/teams/${U10.id}/notices/9`)
   })
 })
 
@@ -45,6 +66,28 @@ describe('お知らせ一覧と表示', () => {
     expect(items[1]).toHaveTextContent('来週の試合11/8(日) 08:00 / 代表 太郎')
     // 保護者には作成の導線を出さない
     expect(screen.queryByRole('link', { name: 'お知らせを書く' })).not.toBeInTheDocument()
+  })
+
+  it('AC-005-19 loads older notices 50 at a time', async () => {
+    const page1 = Array.from({ length: 50 }, (_, i) => notice({ id: 100 - i, title: `連絡${100 - i}` }))
+    const page2 = [notice({ id: 50, title: '連絡50' })]
+    const { calls } = renderAt(`/teams/${U10.id}/notices`, {
+      'GET /api/me': signedIn({ teams: [parentTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: parentTeam },
+      [`GET ${BASE}/notices`]: (_body, search) =>
+        search === '?before=51' ? { status: 200, body: { notices: page2, next_before: null } } : { status: 200, body: { notices: page1, next_before: 51 } },
+    })
+
+    const list = await screen.findByRole('list', { name: 'お知らせ' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(50)
+    expect(screen.getByText('50件以上')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'さらに古いお知らせを見る' }))
+
+    expect(await screen.findByRole('link', { name: /連絡50/ })).toBeInTheDocument()
+    expect(within(list).getAllByRole('listitem')).toHaveLength(51)
+    expect(screen.queryByRole('button', { name: 'さらに古いお知らせを見る' })).not.toBeInTheDocument()
+    expect(screen.getByText('51件')).toBeInTheDocument()
+    expect(calls.filter((c) => c.path === `${BASE}/notices`).map((c) => c.search)).toEqual(['', '?before=51'])
   })
 
   it('AC-005-14 says when there is nothing yet, and offers writing to a coach', async () => {
@@ -113,6 +156,40 @@ describe('お知らせを書く', () => {
     expect(calls.filter((c) => c.path === `${BASE}/notices/recipient-count`).at(-1)?.body).toEqual({ target: { type: 'grades', values: ['e3'] } })
   })
 
+  it('AC-005-02 cannot send until the count is known, and the count can be retried after a failure', async () => {
+    let fail = true
+    page({
+      [`POST ${BASE}/notices/recipient-count`]: () =>
+        fail ? { status: 429, body: { message: '操作が多すぎます。時間をおいてもう一度お試しください' } } : { status: 200, body: { count: 5 } },
+    })
+
+    expect(await screen.findByText('届く人数を数えられませんでした。操作が多すぎます。時間をおいてもう一度お試しください')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '送信する' })).toBeDisabled()
+
+    fail = false
+    await userEvent.click(screen.getByRole('button', { name: 'もう一度数える' }))
+    expect(await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '5人に送信する' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'もう一度数える' })).not.toBeInTheDocument()
+  })
+
+  it('AC-005-02 the count goes through the CSRF retry', async () => {
+    let first = true
+    const { calls } = page({
+      'GET /api/sanctum/csrf-cookie': { status: 204 },
+      [`POST ${BASE}/notices/recipient-count`]: () => {
+        if (first) {
+          first = false
+          return { status: 419, body: { message: 'ページの有効期限が切れました' } }
+        }
+        return { status: 200, body: { count: 5 } }
+      },
+    })
+
+    expect(await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(calls.filter((c) => c.path === `${BASE}/notices/recipient-count`)).toHaveLength(2)
+  })
+
   it('AC-005-01 sends now and opens the notice', async () => {
     const { calls, router } = page({
       [`POST ${BASE}/notices`]: { status: 201, body: { notice: notice({ id: 21 }) } },
@@ -148,7 +225,8 @@ describe('お知らせを書く', () => {
     expect(await screen.findByText('「来週の試合」を予約しました。')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe(`/teams/${U10.id}/notices/scheduled`)
     const sent = calls.find((c) => c.method === 'POST' && c.path === `${BASE}/notices`)?.body as { scheduled_at: string }
-    expect(new Date(sent.scheduled_at).getTime()).toBe(new Date('2026-11-09T07:00').getTime())
+    // 日本時間の 7:00 は UTC の前日 22:00(端末の時間帯に関係なく)
+    expect(sent.scheduled_at).toBe('2026-11-08T22:00:00.000Z')
   })
 
   it('AC-005-13 shows the allowed range when the server refuses the date', async () => {
@@ -218,12 +296,17 @@ describe('予約中のお知らせ', () => {
 
     const title = await screen.findByLabelText('タイトル')
     expect(title).toHaveValue('翌朝の連絡')
+    // UTC の 22:00 は、日本時間の翌日 7:00 として出す
+    expect(screen.getByLabelText('予約日時')).toHaveValue('2026-11-09T07:00')
+    expect(await screen.findByText('8人に届きます(作成者を含む。同じ人には1通だけ)')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '小3' })).toBeChecked()
     await userEvent.clear(title)
     await userEvent.type(title, '時間変更')
     await userEvent.click(await screen.findByRole('button', { name: '予約を保存する' }))
 
     expect(await screen.findByText('「時間変更」の予約を保存しました。')).toBeInTheDocument()
+    // 作成者を送信者として数える(公開のときと同じ)
+    expect(calls.find((c) => c.path === `${BASE}/notices/recipient-count`)?.body).toEqual({ target: { type: 'grades', values: ['e3', 'e4'] }, notice_id: 30 })
     expect(router.state.location.pathname).toBe(`/teams/${U10.id}/notices/scheduled`)
     const body = calls.find((c) => c.method === 'PATCH')?.body as { title: string; target: unknown; scheduled_at: string }
     expect(body.title).toBe('時間変更')
@@ -257,5 +340,19 @@ describe('予約中のお知らせ', () => {
 
     expect(await screen.findByRole('heading', { name: '予約中のお知らせが見つかりません' })).toBeInTheDocument()
     expect(screen.getByText(/訂正は新しいお知らせで送ってください/)).toBeInTheDocument()
+  })
+})
+
+describe('日時と本文の表示', () => {
+  it('AC-005-09 reads the input as Japan time whatever the device time zone', () => {
+    expect(localInputToIso('2026-11-09T07:00')).toBe('2026-11-08T22:00:00.000Z')
+    expect(isoToLocalInput('2026-11-08T22:00:00+00:00')).toBe('2026-11-09T07:00')
+    expect(isoToLocalInput('2026-11-08T15:00:00Z')).toBe('2026-11-09T00:00')
+  })
+
+  it('AC-005-16 a format character ends a URL so the link matches what is shown', () => {
+    const { container } = render(<Linkified text={'https://example.invalid/a\u202Etxt.exe と https://example.invalid/b\u200Bc'} />)
+    const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))
+    expect(links).toEqual(['https://example.invalid/a', 'https://example.invalid/b'])
   })
 })
