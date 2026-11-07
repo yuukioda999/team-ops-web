@@ -17,6 +17,11 @@ export type InvitationPreview = components['schemas']['InvitationPreview']
 export type JoinRequest = components['schemas']['JoinRequest']
 export type MyJoinRequest = components['schemas']['MyJoinRequest']
 export type Sport = components['schemas']['Sport']
+export type Grade = components['schemas']['Grade']
+export type Player = components['schemas']['Player']
+export type Guardian = components['schemas']['Guardian']
+export type CsvProblem = components['schemas']['CsvProblem']
+export type PlayerImportPreview = components['schemas']['PlayerImportPreview']
 export type ValidationErrors = Record<string, string[]>
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])

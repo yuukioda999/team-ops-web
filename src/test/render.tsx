@@ -8,7 +8,22 @@ export type Reply = { status: number; body?: unknown } | 'network-error'
 /** "METHOD /path" -> reply, or a function for replies that depend on the request. */
 export type Handlers = Record<string, Reply | ((body: unknown) => Reply | Promise<Reply>)>
 
-export type Call = { method: string; path: string; body: unknown; headers: Headers }
+export type Call = { method: string; path: string; search: string; body: unknown; headers: Headers }
+
+/**
+ * Reads a multipart body into field name → text. request.formData() fails on Node 24 when the
+ * FormData holds a jsdom File (undici rejects it), so the test fetch parses the text itself.
+ */
+export function parseMultipart(text: string, contentType: string): Record<string, string> {
+  const boundary = /boundary=(.+)$/.exec(contentType)?.[1] ?? ''
+  const fields: Record<string, string> = {}
+  for (const part of text.split(`--${boundary}`)) {
+    const [head, ...rest] = part.split('\r\n\r\n')
+    const name = /name="([^"]+)"/.exec(head)?.[1]
+    if (name !== undefined) fields[name] = rest.join('\r\n\r\n').replace(/\r\n$/, '')
+  }
+  return fields
+}
 
 /**
  * Renders the app at a path with a fake API. Unknown requests fail the test.
@@ -23,10 +38,16 @@ export function renderAt(path: string, handlers: Handlers) {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(new URL(String(input), 'http://localhost'), init)
       const url = new URL(request.url, 'http://localhost')
-      const text = request.method === 'GET' ? '' : await request.text()
-      const body = text === '' ? undefined : JSON.parse(text)
+      let body: unknown
+      const contentType = request.headers.get('Content-Type') ?? ''
+      if (contentType.startsWith('multipart/form-data')) {
+        body = parseMultipart(await request.text(), contentType)
+      } else {
+        const text = request.method === 'GET' ? '' : await request.text()
+        body = text === '' ? undefined : JSON.parse(text)
+      }
       const key = `${request.method} ${url.pathname}`
-      calls.push({ method: request.method, path: url.pathname, body, headers: request.headers })
+      calls.push({ method: request.method, path: url.pathname, search: url.search, body, headers: request.headers })
 
       const handler = handlers[key]
       if (handler === undefined) {
@@ -53,7 +74,7 @@ export const team = (overrides: Partial<Team> = {}): Team => ({
   name: 'あおば台FC U-10',
   sport: 'soccer',
   roles: ['representative'],
-  permissions: { manage_invitation: true, review_join_requests: true },
+  permissions: { manage_invitation: true, review_join_requests: true, manage_players: true, view_players: true, view_all_players: true },
   ...overrides,
 })
 

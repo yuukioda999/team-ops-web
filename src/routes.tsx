@@ -9,6 +9,9 @@ import { WelcomePage } from './features/auth/WelcomePage.tsx'
 import { InvitationPage } from './features/invitations/InvitationPage.tsx'
 import { JoinPage } from './features/invitations/JoinPage.tsx'
 import { JoinRequestsPage } from './features/invitations/JoinRequestsPage.tsx'
+import { ImportPage } from './features/players/ImportPage.tsx'
+import { PlayerPage } from './features/players/PlayerPage.tsx'
+import { RosterPage } from './features/players/RosterPage.tsx'
 import { NewTeamPage } from './features/teams/NewTeamPage.tsx'
 import { StartPage } from './features/teams/StartPage.tsx'
 import { TeamHomePage } from './features/teams/TeamHomePage.tsx'
@@ -32,6 +35,10 @@ export const routes: RouteObject[] = [
       { path: 'teams/:teamId', element: <RequireSignedIn><TeamHomePage /></RequireSignedIn> },
       { path: 'teams/:teamId/invitation', element: <RequireSignedIn><InvitationPage /></RequireSignedIn> },
       { path: 'teams/:teamId/join-requests', element: <RequireSignedIn><JoinRequestsPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/players', element: <RequireSignedIn><RosterPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/players/new', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/players/import', element: <RequireSignedIn><ImportPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/players/:playerId', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
       // Opened from an invitation link, logged in or not (AC-002-05)
       { path: 'join', element: <JoinPage /> },
       { path: 'settings', element: <RequireSignedIn><SettingsPage /></RequireSignedIn> },

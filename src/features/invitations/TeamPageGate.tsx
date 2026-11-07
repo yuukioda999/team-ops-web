@@ -14,10 +14,13 @@ import { useTeam } from '../teams/use-team.ts'
 export function TeamPageGate({
   teamId,
   allowed,
+  deniedText = 'この画面は、チームの代表と役員だけが使えます。',
   children,
 }: {
   teamId: string
   allowed: (team: Team) => boolean
+  /** Shown when the member's roles do not allow the page */
+  deniedText?: string
   children: (team: Team) => ReactNode
 }) {
   const me = useMe()
@@ -30,7 +33,7 @@ export function TeamPageGate({
       state.status === 'ready' ? 'この画面を開く権限がありません' : state.status === 'not-found' ? 'チームが見つかりません' : 'チームを読み込めませんでした'
     const text =
       state.status === 'ready'
-        ? 'この画面は、チームの代表と役員だけが使えます。'
+        ? deniedText
         : state.status === 'not-found'
           ? 'このチームは存在しないか、あなたが所属していないチームです。'
           : '通信に失敗しました。時間をおいてもう一度開いてください。'
