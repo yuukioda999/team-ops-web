@@ -441,7 +441,8 @@ export interface paths {
         put?: never;
         /**
          * CSV を確認する
-         * @description 代表・役員だけ。登録はしません(AC-003-14)。行のエラーと重複の警告を返します(AC-003-15・21)。
+         * @description 代表・役員だけ。登録はしません(AC-003-14)。行のエラーと重複の警告を返します(AC-003-15・21)。確認したことを監査ログに残します(件数だけ)。
+         *     確認と確定は、合わせて1人1分に10回までです。
          *     文字コード・1MB・500行・見出しの問題は 422 です(AC-003-16・17)。確定には、返した file_hash と同じファイルを送ります(ADR-0014)。
          */
         post: operations["previewPlayerImport"];
@@ -610,6 +611,8 @@ export interface components {
                 review_join_requests: boolean;
                 /** @description 選手の登録・編集・削除、保護者の紐づけ、CSV の取り込み(代表・役員) */
                 manage_players: boolean;
+                /** @description 名簿を開ける(代表・役員・コーチ・保護者) */
+                view_players: boolean;
                 /** @description 全選手の名簿を見られる(代表・役員・コーチ)。false なら自分に紐づく選手だけ */
                 view_all_players: boolean;
             };
@@ -1548,6 +1551,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     importPlayers: {
@@ -1586,6 +1590,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     previewInvitation: {

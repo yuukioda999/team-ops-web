@@ -106,7 +106,7 @@ function NewPlayer({ team }: { team: Team }) {
       const notice = data.possible_duplicate
         ? `${data.player.display_name}さんを登録しました。同じ表示名・学年の選手がすでにいます。重複していないか、名簿で確かめてください。`
         : `${data.player.display_name}さんを登録しました。続けて保護者を紐づけられます。`
-      navigate(`/teams/${team.id}/players/${data.player.id}`, { replace: true, state: { notice, duplicate: data.possible_duplicate } })
+      navigate(`/teams/${team.id}/players/${data.player.id}`, { replace: true, state: { notice } })
       return
     }
     const fields = fieldErrors(error)
@@ -136,7 +136,7 @@ function EditPlayer({ team, playerId }: { team: Team; playerId: number }) {
   const me = useMe()
   const navigate = useNavigate()
   const location = useLocation()
-  const arrived = location.state as { notice?: string; duplicate?: boolean } | null
+  const arrived = location.state as { notice?: string } | null
   const [player, setPlayer] = useState<Player | null>(null)
   const [missing, setMissing] = useState(false)
   const [values, setValues] = useState<Values>({ display_name: '', grade: '', number: '' })

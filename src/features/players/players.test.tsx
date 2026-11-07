@@ -5,8 +5,8 @@ import type { Player, PlayerImportPreview } from '../../api/client.ts'
 import { renderAt, signedIn, team } from '../../test/render.tsx'
 
 const U10 = team()
-const coachTeam = team({ roles: ['coach'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_all_players: true } })
-const parentTeam = team({ roles: ['parent'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_all_players: false } })
+const coachTeam = team({ roles: ['coach'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: true, view_all_players: true } })
+const parentTeam = team({ roles: ['parent'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: true, view_all_players: false } })
 const BASE = `/api/teams/${U10.id}`
 
 const player = (overrides: Partial<Player> = {}): Player => ({
@@ -32,7 +32,10 @@ describe('名簿を見る', () => {
     expect(items).toHaveLength(2)
     expect(within(items[0]).getByRole('link', { name: '山田 太郎' })).toHaveAttribute('href', `/teams/${U10.id}/players/1`)
     expect(items[0]).toHaveTextContent('小3 / 保護者:山田 母')
-    expect(within(items[0]).getByLabelText('背番号10')).toBeInTheDocument()
+    expect(items[0]).toHaveTextContent('背番号10')
+    // 背番号なしは「-」を見せ、読み上げでは「背番号 なし」と伝える
+    expect(within(items[1]).getByText('背番号')).toHaveClass('visually-hidden')
+    expect(within(items[1]).getByText('なし')).toHaveClass('visually-hidden')
     expect(items[1]).toHaveTextContent('小1 / 保護者:未登録')
     expect(screen.getByText('2人')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '選手を登録する' })).toHaveAttribute('href', `/teams/${U10.id}/players/new`)
@@ -84,6 +87,31 @@ describe('名簿を見る', () => {
     })
 
     expect(await screen.findByRole('link', { name: 'お子さんの情報を見る' })).toHaveAttribute('href', `/teams/${U10.id}/players`)
+  })
+
+  it('AC-003-12 pressing the filter without changing it reloads the list instead of hanging', async () => {
+    const { calls } = renderAt(`/teams/${U10.id}/players`, {
+      'GET /api/me': signedIn({ teams: [U10] }),
+      [`GET ${BASE}`]: { status: 200, body: U10 },
+      [`GET ${BASE}/players`]: roster([player()]),
+    })
+
+    await screen.findByText('山田 太郎')
+    await userEvent.click(screen.getByRole('button', { name: '絞り込む' }))
+    expect(await screen.findByText('山田 太郎')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '絞り込む' }))
+    expect(await screen.findByText('山田 太郎')).toBeInTheDocument()
+    expect(calls.filter((c) => c.path === `${BASE}/players`)).toHaveLength(3)
+  })
+
+  it('AC-003-08 a member without roster permission is told who can see it', async () => {
+    const noRoster = team({ roles: [], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: false, view_all_players: false } })
+    renderAt(`/teams/${U10.id}/players`, {
+      'GET /api/me': signedIn({ teams: [noRoster] }),
+      [`GET ${BASE}`]: { status: 200, body: noRoster },
+    })
+
+    expect(await screen.findByText('名簿は、代表・役員・コーチと、選手に紐づく保護者が見られます。')).toBeInTheDocument()
   })
 
   it('AC-003-12 filters by grade and number', async () => {

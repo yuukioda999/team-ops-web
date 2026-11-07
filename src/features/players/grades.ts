@@ -16,9 +16,9 @@ export const GRADE_LABELS: Record<Grade, string> = {
 
 export const GRADES = Object.keys(GRADE_LABELS) as Grade[]
 
-/** 名簿を開けるか。代表・役員・コーチは全員、保護者は自分の子どもだけ(AC-003-08・09) */
+/** 名簿を開けるか。判定は API(TeamPolicy)の結果をそのまま使う(AC-003-08・09) */
 export function canOpenRoster(team: Team): boolean {
-  return team.permissions.view_all_players || team.roles.includes('parent')
+  return team.permissions.view_players
 }
 
 export const MAX_GUARDIANS = 4

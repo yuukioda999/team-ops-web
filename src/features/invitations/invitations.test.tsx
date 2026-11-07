@@ -8,7 +8,7 @@ const TOKEN = 'a'.repeat(64)
 const U10 = team()
 const URL_ = `http://localhost:5173/join?token=${TOKEN}`
 const invitation = { url: URL_, expires_at: '2026-11-14T09:00:00+09:00' }
-const coachTeam = team({ roles: ['coach'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_all_players: true } })
+const coachTeam = team({ roles: ['coach'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: true, view_all_players: true } })
 
 const preview = (overrides: Partial<InvitationPreview> = {}) => ({
   status: 200,

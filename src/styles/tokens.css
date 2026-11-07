@@ -10,6 +10,7 @@
   --color-accent: #2bd0b8;
   --color-unread: #b23a28;
   --color-unread-soft: #ff8a73;
+  --color-danger: #b23a28; /* 削除・取り込めないエラー */
   --color-border: #e3e8f2;
   --color-border-strong: #cdd4e2;
   --color-score-dash: #a3acc4;

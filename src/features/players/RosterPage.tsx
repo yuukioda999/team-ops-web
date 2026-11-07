@@ -51,8 +51,9 @@ function Roster({ team }: { team: Team }) {
 
   function applyFilter(event: FormEvent) {
     event.preventDefault()
+    // 条件が同じでも読み込み直す。毎回新しいオブジェクトにして、useEffect が必ず動くようにする
     setPlayers(null)
-    setFilter(draft)
+    setFilter({ ...draft })
   }
 
   const filtered = filter.grade !== '' || filter.number !== ''
@@ -140,8 +141,14 @@ function Roster({ team }: { team: Team }) {
         <ul className="roster" aria-label="選手">
           {players.map((player) => (
             <li key={player.id} className="roster__item">
-              <span className="roster__number score" aria-label={player.number === null ? '背番号なし' : `背番号${player.number}`}>
-                {player.number ?? '-'}
+              <span className="roster__number score">
+                <span className="visually-hidden">背番号</span>
+                {player.number ?? (
+                  <>
+                    <span aria-hidden="true">-</span>
+                    <span className="visually-hidden">なし</span>
+                  </>
+                )}
               </span>
               <span className="roster__body">
                 <span className="roster__name">
