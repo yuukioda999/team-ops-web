@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Player, PlayerImportPreview } from '../../api/client.ts'
 import { renderAt, signedIn, team } from '../../test/render.tsx'
 
@@ -316,6 +316,13 @@ describe('CSVで一括登録する', () => {
   })
 
   it('AC-003-14 previews the count and rows, then imports the same file with its hash', async () => {
+    // On Node 24 the test fetch cannot read a jsdom File, so record what the screen puts into the form
+    const appended: [string, string | Blob][] = []
+    const original = FormData.prototype.append
+    const spy = vi.spyOn(FormData.prototype, 'append').mockImplementation(function (this: FormData, name: string, value: string | Blob) {
+      appended.push([name, value])
+      Reflect.apply(original, this, [name, value])
+    })
     const { calls, router } = renderAt(`/teams/${U10.id}/players/import`, {
       'GET /api/me': signedIn({ teams: [U10] }),
       [`GET ${BASE}`]: { status: 200, body: U10 },
@@ -335,10 +342,14 @@ describe('CSVで一括登録する', () => {
 
     expect(await screen.findByText('12人を名簿に取り込みました。')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe(`/teams/${U10.id}/players`)
-    // The test fetch reads the multipart body back with request.formData() (a FormData of the test runtime)
-    const sent = calls.find((c) => c.path === `${BASE}/players/import`)?.body as FormData
-    expect(sent.get('file_hash')).toBe('f'.repeat(64))
-    expect(await (sent.get('file') as Blob).text()).toBe('表示名,学年,背番号\n山田 太郎,小3,10\n')
+    spy.mockRestore()
+    // 確認と確定の両方で、選んだファイルそのものを送り、確定では確認の file_hash も送る
+    const files = appended.filter(([name]) => name === 'file').map(([, value]) => value as File)
+    expect(files).toHaveLength(2)
+    expect(files.every((f) => f.name === 'players.csv')).toBe(true)
+    expect(await files[1].text()).toBe('表示名,学年,背番号\n山田 太郎,小3,10\n')
+    expect(appended.filter(([name]) => name === 'file_hash')).toEqual([['file_hash', 'f'.repeat(64)]])
+    expect(calls.find((c) => c.path === `${BASE}/players/import`)?.body).toMatchObject({ file_hash: 'f'.repeat(64) })
   })
 
   it('AC-003-15 lists the errors with line, column and reason and offers no import', async () => {

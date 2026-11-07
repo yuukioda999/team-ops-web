@@ -11,6 +11,21 @@ export type Handlers = Record<string, Reply | ((body: unknown) => Reply | Promis
 export type Call = { method: string; path: string; search: string; body: unknown; headers: Headers }
 
 /**
+ * Reads a multipart body into field name → text. request.formData() fails on Node 24 when the
+ * FormData holds a jsdom File (undici rejects it), so the test fetch parses the text itself.
+ */
+export function parseMultipart(text: string, contentType: string): Record<string, string> {
+  const boundary = /boundary=(.+)$/.exec(contentType)?.[1] ?? ''
+  const fields: Record<string, string> = {}
+  for (const part of text.split(`--${boundary}`)) {
+    const [head, ...rest] = part.split('\r\n\r\n')
+    const name = /name="([^"]+)"/.exec(head)?.[1]
+    if (name !== undefined) fields[name] = rest.join('\r\n\r\n').replace(/\r\n$/, '')
+  }
+  return fields
+}
+
+/**
  * Renders the app at a path with a fake API. Unknown requests fail the test.
  * Returns the list of calls the screen made.
  */
@@ -24,8 +39,9 @@ export function renderAt(path: string, handlers: Handlers) {
       const request = input instanceof Request ? input : new Request(new URL(String(input), 'http://localhost'), init)
       const url = new URL(request.url, 'http://localhost')
       let body: unknown
-      if ((request.headers.get('Content-Type') ?? '').startsWith('multipart/form-data')) {
-        body = await request.formData()
+      const contentType = request.headers.get('Content-Type') ?? ''
+      if (contentType.startsWith('multipart/form-data')) {
+        body = parseMultipart(await request.text(), contentType)
       } else {
         const text = request.method === 'GET' ? '' : await request.text()
         body = text === '' ? undefined : JSON.parse(text)
