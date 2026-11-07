@@ -170,7 +170,7 @@ export function NoticeForm({
           </label>
           <label className="choice">
             <input type="radio" name="when" checked={schedule} onChange={() => setSchedule(true)} />
-            日時を指定して予約する
+            予約して送る
           </label>
         </fieldset>
       )}

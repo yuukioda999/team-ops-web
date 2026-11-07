@@ -141,7 +141,7 @@ describe('お知らせを書く', () => {
 
     await userEvent.type(await screen.findByLabelText('タイトル'), '翌朝の連絡')
     await userEvent.type(screen.getByLabelText('本文'), '7時に届けます')
-    await userEvent.click(screen.getByRole('radio', { name: '日時を指定して予約する' }))
+    await userEvent.click(screen.getByRole('radio', { name: '予約して送る' }))
     await userEvent.type(screen.getByLabelText('予約日時'), '2026-11-09T07:00')
     await userEvent.click(screen.getByRole('button', { name: '予約する' }))
 
@@ -158,7 +158,7 @@ describe('お知らせを書く', () => {
 
     await userEvent.type(await screen.findByLabelText('タイトル'), 'x')
     await userEvent.type(screen.getByLabelText('本文'), 'x')
-    await userEvent.click(screen.getByRole('radio', { name: '日時を指定して予約する' }))
+    await userEvent.click(screen.getByRole('radio', { name: '予約して送る' }))
     await userEvent.type(screen.getByLabelText('予約日時'), '2026-01-01T07:00')
     await userEvent.click(screen.getByRole('button', { name: '予約する' }))
 
@@ -171,7 +171,7 @@ describe('お知らせを書く', () => {
 
     await userEvent.type(await screen.findByLabelText('タイトル'), 'x')
     await userEvent.type(screen.getByLabelText('本文'), 'x')
-    await userEvent.click(screen.getByRole('radio', { name: '日時を指定して予約する' }))
+    await userEvent.click(screen.getByRole('radio', { name: '予約して送る' }))
     await userEvent.click(screen.getByRole('button', { name: '予約する' }))
 
     expect(await screen.findByText('予約日時を入力してください')).toBeInTheDocument()
