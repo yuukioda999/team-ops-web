@@ -550,3 +550,61 @@
   font-size: 12px;
   color: var(--color-ink-muted);
 }
+
+/* Members and audit log (004) */
+.member-list,
+.audit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.member-list__item + .member-list__item,
+.audit-list__item + .audit-list__item {
+  border-top: 1px solid var(--color-border);
+}
+.member-list__link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 64px;
+  justify-content: center;
+  padding: 10px 16px;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.member-list__link:hover .member-list__name {
+  text-decoration: underline;
+}
+.member-list__name {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.member-list__me {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-panel);
+}
+.member-list__roles,
+.audit-list__meta {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+.audit-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+}
+.audit-list__action {
+  font-size: 15px;
+  font-weight: 700;
+}

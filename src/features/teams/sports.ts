@@ -6,6 +6,8 @@ export const SPORT_LABELS: Record<Sport, string> = {
   other: 'その他',
 }
 
+export const SPORTS: Sport[] = ['soccer', 'baseball', 'other']
+
 export const ROLE_LABELS: Record<TeamRole, string> = {
   representative: '代表',
   officer: '役員',

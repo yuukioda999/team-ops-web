@@ -189,6 +189,133 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * チーム名・競技を変える
+         * @description 代表だけ。送った項目だけを変えます。検査はチーム作成と同じです(AC-004-11)。
+         */
+        patch: operations["updateTeam"];
+        trace?: never;
+    };
+    "/api/teams/{team}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * メンバー一覧
+         * @description 代表・役員だけ。表示名と役割だけを返します(メールアドレスは返しません、ADR-0015)。代表が先頭です。
+         */
+        get: operations["listMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/members/{membership}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description チームのメンバーのID */
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 役割を置き換える
+         * @description 代表だけ。代表を除く役割(役員・コーチ・保護者)の一覧に置き換え、本人にメールで知らせます(AC-004-03)。
+         *     代表のメンバーは代表のまま、ほかの役割だけが変わります。役割が1つも残らない一覧は 422 です(AC-004-09)。
+         *     保護者を外すと、選手との紐づけも外れます。
+         */
+        put: operations["changeMemberRoles"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/members/{membership}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description チームのメンバーのID */
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 除名する
+         * @description 代表・役員だけ。役員は、代表と役員の役割を持つメンバーを除名できません(403、AC-004-07)。
+         *     自分は除名できません(422、AC-004-06)。除名すると、役割と選手との紐づけも外れます(AC-004-08)。本人にはメールしません。
+         */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/representative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 代表を交代する
+         * @description 代表だけ。役員のメンバーだけを指定できます(それ以外は 422、AC-004-05)。
+         *     新しい代表は役員から代表に、元の代表は役員になり、両者にメールで知らせます(AC-004-04)。
+         */
+        post: operations["transferRepresentative"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 監査ログ
+         * @description 代表だけ。新しい順に100件ずつ(AC-004-12)。続きは `next_before` を `before` に渡して取ります。記録の中身(ID など)は返しません。
+         */
+        get: operations["listAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -566,6 +693,37 @@ export interface components {
             name: string;
             sport: components["schemas"]["Sport"];
         };
+        /** @description 送った項目だけを変える */
+        UpdateTeamInput: {
+            name?: string;
+            sport?: components["schemas"]["Sport"];
+        };
+        Member: {
+            membership_id: number;
+            display_name: string | null;
+            roles: components["schemas"]["TeamRole"][];
+            /** @description 自分自身か */
+            is_me: boolean;
+        };
+        MemberEnvelope: {
+            member: components["schemas"]["Member"];
+        };
+        AuditLogEntry: {
+            id: number;
+            /** Format: date-time */
+            created_at: string;
+            /** @description 操作の種類(例:member.roles_changed) */
+            action: string;
+            /** @description 操作の種類の日本語(例:メンバーの役割を変更) */
+            action_label: string;
+            /**
+             * @description member は今のメンバー、former はすでにチームにいない人(アカウントが消えた人を含む)
+             * @enum {string}
+             */
+            actor: "member" | "former";
+            /** @description actor が member のときだけ */
+            actor_display_name: string | null;
+        };
         /** @enum {string} */
         Sport: "soccer" | "baseball" | "other";
         /**
@@ -611,6 +769,16 @@ export interface components {
                 review_join_requests: boolean;
                 /** @description 選手の登録・編集・削除、保護者の紐づけ、CSV の取り込み(代表・役員) */
                 manage_players: boolean;
+                /** @description チーム名・競技を変えられる(代表) */
+                update_team: boolean;
+                /** @description メンバー一覧を見られる(代表・役員) */
+                view_members: boolean;
+                /** @description 役割の変更と代表の交代ができる(代表) */
+                manage_roles: boolean;
+                /** @description メンバーを除名できる(代表・役員。役員は代表と役員を除名できない) */
+                remove_members: boolean;
+                /** @description 監査ログを見られる(代表) */
+                view_audit_logs: boolean;
                 /** @description 名簿を開ける(代表・役員・コーチ・保護者) */
                 view_players: boolean;
                 /** @description 全選手の名簿を見られる(代表・役員・コーチ)。false なら自分に紐づく選手だけ */
@@ -831,6 +999,8 @@ export interface components {
     parameters: {
         /** @description チームID(ULID) */
         TeamId: string;
+        /** @description チームのメンバーのID */
+        MembershipId: number;
         /** @description 選手のID */
         PlayerId: number;
         /** @description 参加申請のID */
@@ -1099,6 +1269,198 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    updateTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTeamInput"];
+            };
+        };
+        responses: {
+            /** @description 変えた */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Team"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description メンバー一覧 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        members: components["schemas"]["Member"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    changeMemberRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description チームのメンバーのID */
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    roles: ("officer" | "coach" | "parent")[];
+                };
+            };
+        };
+        responses: {
+            /** @description 変えた */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description チームのメンバーのID */
+                membership: components["parameters"]["MembershipId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 除名した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    transferRepresentative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 新しい代表にするメンバーのID */
+                    membership_id: number;
+                };
+            };
+        };
+        responses: {
+            /** @description 交代した(新しい代表) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listAuditLogs: {
+        parameters: {
+            query?: {
+                before?: number;
+            };
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 監査ログ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        logs: components["schemas"]["AuditLogEntry"][];
+                        /** @description 続きがあるとき、次に before に渡す値 */
+                        next_before: number | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
         };
     };
     getInvitation: {
