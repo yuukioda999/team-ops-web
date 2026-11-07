@@ -6,9 +6,7 @@ import { PageFrame } from '../../components/PageFrame.tsx'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { useMe, useSession } from '../auth/session-context.ts'
-import { SPORT_LABELS } from './sports.ts'
-
-const SPORTS: Sport[] = ['soccer', 'baseball', 'other']
+import { SPORT_LABELS, SPORTS } from './sports.ts'
 
 /** チームの作成。作った人が代表になる(AC-001-11・12)。 */
 export function NewTeamPage() {

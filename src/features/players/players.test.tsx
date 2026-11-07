@@ -2,11 +2,11 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { Player, PlayerImportPreview } from '../../api/client.ts'
-import { renderAt, signedIn, team } from '../../test/render.tsx'
+import { permissions, renderAt, signedIn, team } from '../../test/render.tsx'
 
 const U10 = team()
-const coachTeam = team({ roles: ['coach'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: true, view_all_players: true } })
-const parentTeam = team({ roles: ['parent'], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: true, view_all_players: false } })
+const coachTeam = team({ roles: ['coach'], permissions: permissions({ view_players: true, view_all_players: true }) })
+const parentTeam = team({ roles: ['parent'], permissions: permissions({ view_players: true }) })
 const BASE = `/api/teams/${U10.id}`
 
 const player = (overrides: Partial<Player> = {}): Player => ({
@@ -105,7 +105,7 @@ describe('名簿を見る', () => {
   })
 
   it('AC-003-08 a member without roster permission is told who can see it', async () => {
-    const noRoster = team({ roles: [], permissions: { manage_invitation: false, review_join_requests: false, manage_players: false, view_players: false, view_all_players: false } })
+    const noRoster = team({ roles: [], permissions: permissions() })
     renderAt(`/teams/${U10.id}/players`, {
       'GET /api/me': signedIn({ teams: [noRoster] }),
       [`GET ${BASE}`]: { status: 200, body: noRoster },

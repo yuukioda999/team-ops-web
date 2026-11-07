@@ -88,19 +88,41 @@ function TeamHome({ teamId }: { teamId: string }) {
           </Link>
         </section>
       )}
-      {(team.permissions.manage_invitation || team.permissions.review_join_requests) && (
+      {(team.permissions.manage_invitation || team.permissions.review_join_requests || team.permissions.view_members) && (
         <section className="sheet" aria-labelledby="members-title">
           <h2 id="members-title" className="sheet__title">
             メンバー
           </h2>
+          {team.permissions.view_members && (
+            <Link to={`/teams/${team.id}/members`} className="button button--accent">
+              メンバー一覧
+            </Link>
+          )}
           {team.permissions.manage_invitation && (
-            <Link to={`/teams/${team.id}/invitation`} className="button button--accent">
+            <Link to={`/teams/${team.id}/invitation`} className="button button--secondary">
               メンバーを招待する
             </Link>
           )}
           {team.permissions.review_join_requests && (
             <Link to={`/teams/${team.id}/join-requests`} className="button button--secondary">
               承認待ちの申請を見る
+            </Link>
+          )}
+        </section>
+      )}
+      {(team.permissions.update_team || team.permissions.view_audit_logs) && (
+        <section className="sheet" aria-labelledby="manage-title">
+          <h2 id="manage-title" className="sheet__title">
+            チームの管理
+          </h2>
+          {team.permissions.update_team && (
+            <Link to={`/teams/${team.id}/edit`} className="button button--secondary">
+              チーム名・競技を変える
+            </Link>
+          )}
+          {team.permissions.view_audit_logs && (
+            <Link to={`/teams/${team.id}/audit-logs`} className="button button--secondary">
+              監査ログを見る
             </Link>
           )}
         </section>

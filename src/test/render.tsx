@@ -69,12 +69,41 @@ export function renderAt(path: string, handlers: Handlers) {
   return { calls, router }
 }
 
+/** Permissions with everything off; pass the ones a role has */
+export function permissions(on: Partial<Team['permissions']> = {}): Team['permissions'] {
+  return {
+    manage_invitation: false,
+    review_join_requests: false,
+    manage_players: false,
+    view_players: false,
+    view_all_players: false,
+    update_team: false,
+    view_members: false,
+    manage_roles: false,
+    remove_members: false,
+    view_audit_logs: false,
+    ...on,
+  }
+}
+
+/** A team where the member is the representative (every permission on) */
 export const team = (overrides: Partial<Team> = {}): Team => ({
   id: '01jc9zb4x7q2n6r8t0v2w4y6z8',
   name: 'あおば台FC U-10',
   sport: 'soccer',
   roles: ['representative'],
-  permissions: { manage_invitation: true, review_join_requests: true, manage_players: true, view_players: true, view_all_players: true },
+  permissions: permissions({
+    manage_invitation: true,
+    review_join_requests: true,
+    manage_players: true,
+    view_players: true,
+    view_all_players: true,
+    update_team: true,
+    view_members: true,
+    manage_roles: true,
+    remove_members: true,
+    view_audit_logs: true,
+  }),
   ...overrides,
 })
 
