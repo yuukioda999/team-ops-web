@@ -116,7 +116,7 @@ function TeamHome({ teamId }: { teamId: string }) {
             チームの管理
           </h2>
           {team.permissions.update_team && (
-            <Link to={`/teams/${team.id}/edit`} className="button button--secondary">
+            <Link to={`/teams/${team.id}/settings`} className="button button--secondary">
               チーム名・競技を変える
             </Link>
           )}

@@ -717,10 +717,10 @@ export interface components {
             /** @description 操作の種類の日本語(例:メンバーの役割を変更) */
             action_label: string;
             /**
-             * @description member は今のメンバー、former はすでにチームにいない人、system は仕組みが行った操作
+             * @description member は今のメンバー、former はすでにチームにいない人(アカウントが消えた人を含む)
              * @enum {string}
              */
-            actor: "member" | "former" | "system";
+            actor: "member" | "former";
             /** @description actor が member のときだけ */
             actor_display_name: string | null;
         };

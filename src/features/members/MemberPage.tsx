@@ -90,10 +90,12 @@ function RolesForm({ team, member, onSaved }: { team: Team; member: Member; onSa
   const [selected, setSelected] = useState<TeamRole[]>(member.roles.filter((r) => r !== 'representative'))
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   // 役割をすべて外すと除名になる(AC-004-09)。代表は代表の役割が残るので当てはまらない
   const becomesRemoval = selected.length === 0 && !isRepresentative
 
   function toggle(role: TeamRole, checked: boolean) {
+    setConfirming(false)
     setSelected((current) => (checked ? CHANGEABLE.filter((r) => r === role || current.includes(r)) : current.filter((r) => r !== role)))
   }
 
@@ -114,8 +116,8 @@ function RolesForm({ team, member, onSaved }: { team: Team; member: Member; onSa
     setBusy(true)
     const result = await removeMember(team, member)
     setBusy(false)
-    if (result === null) navigate(`/teams/${team.id}/members`, { replace: true, state: { notice: `${member.display_name ?? 'メンバー'}さんを除名しました。` } })
-    else setFailure(result)
+    if (result.status === 'failed') setFailure(result.message)
+    else navigate(`/teams/${team.id}/members`, { replace: true, state: { notice: removedNotice(result, member.display_name ?? 'メンバー') } })
   }
 
   return (
@@ -142,9 +144,20 @@ function RolesForm({ team, member, onSaved }: { team: Team; member: Member; onSa
           <p id="removal-confirm" className="sheet__text">
             役割をすべて外すと、除名になります。{member.display_name ?? 'このメンバー'}さんはチームの情報を見られなくなり、選手との紐づけも外れます。
           </p>
-          <button type="button" className="button button--danger" onClick={() => void remove()} disabled={busy}>
-            除名する
-          </button>
+          {confirming ? (
+            <>
+              <button type="button" className="button button--danger" onClick={() => void remove()} disabled={busy}>
+                {member.display_name ?? 'このメンバー'}さんを除名する
+              </button>
+              <button type="button" className="button button--secondary" onClick={() => setConfirming(false)}>
+                やめる
+              </button>
+            </>
+          ) : (
+            <button type="button" className="button button--secondary" onClick={() => setConfirming(true)}>
+              除名する
+            </button>
+          )}
         </div>
       ) : (
         <button type="button" className="button button--accent" onClick={() => void save()} disabled={busy}>
@@ -202,13 +215,20 @@ function TransferForm({ team, member }: { team: Team; member: Member }) {
   )
 }
 
-/** 除名する。成功なら null、失敗なら理由を返す */
-async function removeMember(team: Team, member: Member): Promise<string | null> {
+type RemoveResult = { status: 'removed' | 'gone' } | { status: 'failed'; message: string }
+
+/** 除名する。404 は、すでにチームにいない(別の人が先に除名したなど) */
+async function removeMember(team: Team, member: Member): Promise<RemoveResult> {
   const { response, error } = await withCsrfRetry(() =>
     api.DELETE('/api/teams/{team}/members/{membership}', { params: { path: { team: team.id, membership: member.membership_id } } }),
   )
-  if (response.status === 204 || response.status === 404) return null
-  return fieldErrors(error).member?.[0] ?? errorMessage(error)
+  if (response.status === 204) return { status: 'removed' }
+  if (response.status === 404) return { status: 'gone' }
+  return { status: 'failed', message: fieldErrors(error).member?.[0] ?? errorMessage(error) }
+}
+
+function removedNotice(result: RemoveResult, name: string): string {
+  return result.status === 'gone' ? `${name}さんは、すでにチームにいません。` : `${name}さんを除名しました。`
 }
 
 function RemoveForm({ team, member }: { team: Team; member: Member }) {
@@ -222,8 +242,8 @@ function RemoveForm({ team, member }: { team: Team; member: Member }) {
     setBusy(true)
     const result = await removeMember(team, member)
     setBusy(false)
-    if (result === null) navigate(`/teams/${team.id}/members`, { replace: true, state: { notice: `${name}さんを除名しました。` } })
-    else setFailure(result)
+    if (result.status === 'failed') setFailure(result.message)
+    else navigate(`/teams/${team.id}/members`, { replace: true, state: { notice: removedNotice(result, name) } })
   }
 
   return (

@@ -19,7 +19,7 @@ describe('チームのホームの導線', () => {
     renderAt(`/teams/${U10.id}`, { 'GET /api/me': signedIn({ teams: [U10] }), [`GET ${BASE}`]: { status: 200, body: U10 } })
 
     expect(await screen.findByRole('link', { name: 'メンバー一覧' })).toHaveAttribute('href', `/teams/${U10.id}/members`)
-    expect(screen.getByRole('link', { name: 'チーム名・競技を変える' })).toHaveAttribute('href', `/teams/${U10.id}/edit`)
+    expect(screen.getByRole('link', { name: 'チーム名・競技を変える' })).toHaveAttribute('href', `/teams/${U10.id}/settings`)
     expect(screen.getByRole('link', { name: '監査ログを見る' })).toHaveAttribute('href', `/teams/${U10.id}/audit-logs`)
   })
 
@@ -99,6 +99,8 @@ describe('役割の変更・代表の交代・除名', () => {
     expect(within(roles).getByText(/役割をすべて外すと、除名になります。/)).toBeInTheDocument()
     expect(within(roles).queryByRole('button', { name: '役割を保存する' })).not.toBeInTheDocument()
     await userEvent.click(within(roles).getByRole('button', { name: '除名する' }))
+    expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(0)
+    await userEvent.click(within(roles).getByRole('button', { name: '山田 花子さんを除名する' }))
 
     expect(await screen.findByText('山田 花子さんを除名しました。')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe(`/teams/${U10.id}/members`)
@@ -198,6 +200,38 @@ describe('役割の変更・代表の交代・除名', () => {
     expect(await within(section).findByRole('alert')).toHaveTextContent('この操作を行う権限がありません')
   })
 
+  it('AC-004-09 the removal confirmation can be cancelled', async () => {
+    const { calls } = renderAt(`/teams/${U10.id}/members/3`, {
+      'GET /api/me': signedIn({ teams: [U10] }),
+      [`GET ${BASE}`]: { status: 200, body: U10 },
+      [`GET ${BASE}/members`]: list([rep, officer, parent]),
+    })
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: '保護者' }))
+    const roles = screen.getByRole('region', { name: '役割' })
+    await userEvent.click(within(roles).getByRole('button', { name: '除名する' }))
+    await userEvent.click(within(roles).getByRole('button', { name: 'やめる' }))
+    await userEvent.click(within(roles).getByRole('checkbox', { name: 'コーチ' }))
+
+    expect(within(roles).getByRole('button', { name: '役割を保存する' })).toBeInTheDocument()
+    expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(0)
+  })
+
+  it('AC-004-08 when the member was already removed, the screen says so instead of claiming success', async () => {
+    renderAt(`/teams/${U10.id}/members/3`, {
+      'GET /api/me': signedIn({ teams: [officerTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: officerTeam },
+      [`GET ${BASE}/members`]: list([{ ...rep, is_me: false }, { ...officer, is_me: true }, parent]),
+      [`DELETE ${BASE}/members/3`]: { status: 404, body: { message: '見つかりません' } },
+    })
+
+    const section = await screen.findByRole('region', { name: '除名する' })
+    await userEvent.click(within(section).getByRole('button', { name: '除名する' }))
+    await userEvent.click(within(section).getByRole('button', { name: '山田 花子さんを除名する' }))
+
+    expect(await screen.findByText('山田 花子さんは、すでにチームにいません。')).toBeInTheDocument()
+  })
+
   it('a member who is no longer in the team is shown as not found', async () => {
     renderAt(`/teams/${U10.id}/members/9`, {
       'GET /api/me': signedIn({ teams: [U10] }),
@@ -211,7 +245,7 @@ describe('役割の変更・代表の交代・除名', () => {
 
 describe('チームの設定', () => {
   it('AC-004-11 the representative renames the team and the session is reloaded', async () => {
-    const { calls } = renderAt(`/teams/${U10.id}/edit`, {
+    const { calls } = renderAt(`/teams/${U10.id}/settings`, {
       'GET /api/me': signedIn({ teams: [U10] }),
       [`GET ${BASE}`]: { status: 200, body: U10 },
       [`PATCH ${BASE}`]: { status: 200, body: { ...U10, name: 'あおば台FC U-12', sport: 'baseball' } },
@@ -231,7 +265,7 @@ describe('チームの設定', () => {
   })
 
   it('AC-004-11 shows the field errors from the API', async () => {
-    renderAt(`/teams/${U10.id}/edit`, {
+    renderAt(`/teams/${U10.id}/settings`, {
       'GET /api/me': signedIn({ teams: [U10] }),
       [`GET ${BASE}`]: { status: 200, body: U10 },
       [`PATCH ${BASE}`]: { status: 422, body: { message: '入力内容を確認してください', errors: { name: ['チーム名は、1文字から50文字にしてください。'] } } },
@@ -245,7 +279,7 @@ describe('チームの設定', () => {
   })
 
   it('AC-004-11 an officer cannot open the team settings', async () => {
-    renderAt(`/teams/${U10.id}/edit`, { 'GET /api/me': signedIn({ teams: [officerTeam] }), [`GET ${BASE}`]: { status: 200, body: officerTeam } })
+    renderAt(`/teams/${U10.id}/settings`, { 'GET /api/me': signedIn({ teams: [officerTeam] }), [`GET ${BASE}`]: { status: 200, body: officerTeam } })
 
     expect(await screen.findByText('チーム名と競技は、チームの代表だけが変えられます。')).toBeInTheDocument()
   })
@@ -269,7 +303,7 @@ describe('監査ログ', () => {
       [`GET ${BASE}/audit-logs`]: {
         status: 200,
         body: {
-          logs: [entry({ id: 5 }), entry({ id: 4, action_label: '名簿を閲覧', actor: 'former', actor_display_name: null }), entry({ id: 3, action_label: '参加申請を却下', actor: 'system', actor_display_name: null })],
+          logs: [entry({ id: 5 }), entry({ id: 4, action_label: '名簿を閲覧', actor: 'former', actor_display_name: null }), entry({ id: 3, action_label: '参加申請を却下', actor: 'former', actor_display_name: null })],
           next_before: 3,
         },
       },
@@ -279,7 +313,7 @@ describe('監査ログ', () => {
     expect(items[0]).toHaveTextContent('メンバーの役割を変更2026/11/7 15:30 / 代表 太郎')
     expect(items[1]).toHaveTextContent('名簿を閲覧')
     expect(items[1]).toHaveTextContent('(退会したメンバー)')
-    expect(items[2]).toHaveTextContent('(自動)')
+    expect(items[2]).toHaveTextContent('(退会したメンバー)')
 
     await userEvent.click(screen.getByRole('button', { name: 'さらに古い記録を見る' }))
     await screen.findAllByText('メンバーの役割を変更')

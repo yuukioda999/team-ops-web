@@ -21,7 +21,6 @@ export function AuditLogPage() {
 const timeFormat = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' })
 
 function actorName(log: AuditLogEntry): string {
-  if (log.actor === 'system') return '(自動)'
   if (log.actor === 'former') return '(退会したメンバー)'
   return log.actor_display_name ?? '(表示名なし)'
 }

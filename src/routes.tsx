@@ -41,7 +41,7 @@ export const routes: RouteObject[] = [
       { path: 'teams/:teamId/join-requests', element: <RequireSignedIn><JoinRequestsPage /></RequireSignedIn> },
       { path: 'teams/:teamId/members', element: <RequireSignedIn><MembersPage /></RequireSignedIn> },
       { path: 'teams/:teamId/members/:membershipId', element: <RequireSignedIn><MemberPage /></RequireSignedIn> },
-      { path: 'teams/:teamId/edit', element: <RequireSignedIn><TeamSettingsPage /></RequireSignedIn> },
+      { path: 'teams/:teamId/settings', element: <RequireSignedIn><TeamSettingsPage /></RequireSignedIn> },
       { path: 'teams/:teamId/audit-logs', element: <RequireSignedIn><AuditLogPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players', element: <RequireSignedIn><RosterPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players/new', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
