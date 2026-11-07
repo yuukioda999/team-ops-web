@@ -319,6 +319,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team}/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 自分宛てのお知らせ
+         * @description 自分が宛先に含まれる公開済みのお知らせを、新しい順に50件ずつ返します(AC-005-14・19)。
+         *     続きがあれば `next_before` を返すので、`before` に渡すとそれより古いものを返します。
+         */
+        get: operations["listNotices"];
+        put?: never;
+        /**
+         * お知らせを送る(今すぐ、または予約)
+         * @description 代表・役員・コーチだけ(AC-005-01・04)。`scheduled_at` がなければ今すぐ公開し、宛先にメールを送り始めます。
+         *     `scheduled_at` があれば、その日時まで公開しません(5分後〜30日後、AC-005-09・13)。
+         *     宛先は公開の時点の名簿で決め、送信者本人も含みます(AC-005-03・12)。
+         *     1人あたり1時間に10件まで。超えると 429 になります(AC-005-18)。
+         */
+        post: operations["createNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/recipient-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 届く人数
+         * @description 代表・役員・コーチだけ。宛先の指定から、実際に届く人数(送信者本人を含む、重複なし)を返します(AC-005-02)。
+         *     予約の編集では `notice_id` を渡すと、そのお知らせの作成者を送信者として数えます(公開のときと同じ)。
+         *     そのお知らせを扱えない人は 403 です。1人あたり1分に30回まで。超えると 429 になります(AC-005-18)。
+         */
+        post: operations["countNoticeRecipients"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/scheduled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 予約中のお知らせ
+         * @description 代表・役員はチームのすべて、コーチは自分が作ったものだけ(ADR-0017)。予約日時の順。
+         */
+        get: operations["listScheduledNotices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/notices/{notice}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * お知らせ1件
+         * @description 自分が宛先に含まれる公開済みのお知らせだけ。それ以外は存在しない場合と同じ404です(AC-005-15)。
+         */
+        get: operations["getNotice"];
+        put?: never;
+        post?: never;
+        /**
+         * 予約を取り消す
+         * @description 作成者、または代表・役員だけ。何も送られません(AC-005-10)。送信済みは 409 です。
+         */
+        delete: operations["cancelScheduledNotice"];
+        options?: never;
+        head?: never;
+        /**
+         * 予約中のお知らせを編集する
+         * @description 作成者、または代表・役員だけ(AC-005-10)。送った項目だけを変えます。
+         *     送信済み・取り消し済みは 409 で、`errors.notice` に理由が入ります(AC-005-06)。
+         */
+        patch: operations["updateScheduledNotice"];
+        trace?: never;
+    };
     "/api/teams/{team}/invitation": {
         parameters: {
             query?: never;
@@ -693,6 +806,62 @@ export interface components {
             name: string;
             sport: components["schemas"]["Sport"];
         };
+        /** @description 全員なら values は空。学年・役割なら1つ以上。学年と役割は同時に指定できない */
+        NoticeTargetInput: {
+            /** @enum {string} */
+            type: "all" | "grades" | "roles";
+            values: string[];
+        };
+        NoticeInput: {
+            /** @description 1行。前後の空白は取り除く */
+            title: string;
+            /** @description 改行できる。HTML として解釈しない */
+            body: string;
+            target: components["schemas"]["NoticeTargetInput"];
+            /**
+             * Format: date-time
+             * @description 予約日時(時差付き)。null または省略なら今すぐ送信
+             */
+            scheduled_at?: string | null;
+        };
+        /** @description 送った項目だけを変える */
+        NoticeChanges: {
+            title?: string;
+            body?: string;
+            target?: components["schemas"]["NoticeTargetInput"];
+            /** Format: date-time */
+            scheduled_at?: string;
+        };
+        Notice: {
+            id: number;
+            title: string;
+            body: string;
+            target: {
+                /** @enum {string} */
+                type: "all" | "grades" | "roles";
+                values: string[];
+            };
+            /** @enum {string} */
+            status: "scheduled" | "published" | "cancelled";
+            /** Format: date-time */
+            scheduled_at: string | null;
+            /** Format: date-time */
+            published_at: string | null;
+            /** @description 公開の時点で届いた人数(予約中は0) */
+            recipient_count: number;
+            author_display_name: string | null;
+        };
+        NoticeEnvelope: {
+            notice: components["schemas"]["Notice"];
+        };
+        NoticeList: {
+            notices: components["schemas"]["Notice"][];
+        };
+        MyNoticeList: {
+            notices: components["schemas"]["Notice"][];
+            /** @description 続きがあるとき、次に before に渡す値。なければ null */
+            next_before: number | null;
+        };
         /** @description 送った項目だけを変える */
         UpdateTeamInput: {
             name?: string;
@@ -779,6 +948,10 @@ export interface components {
                 remove_members: boolean;
                 /** @description 監査ログを見られる(代表) */
                 view_audit_logs: boolean;
+                /** @description お知らせを作成・送信・予約できる(代表・役員・コーチ) */
+                create_notices: boolean;
+                /** @description チームのすべての予約中のお知らせを編集・取り消しできる(代表・役員)。false なら自分が作ったものだけ */
+                manage_all_notices: boolean;
                 /** @description 名簿を開ける(代表・役員・コーチ・保護者) */
                 view_players: boolean;
                 /** @description 全選手の名簿を見られる(代表・役員・コーチ)。false なら自分に紐づく選手だけ */
@@ -922,6 +1095,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description 送信済み・取り消し済みのお知らせは編集・取り消しできない(AC-005-06) */
+        NoticeNotScheduled: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ValidationError"];
+            };
+        };
         /** @description ログインしていない、またはセッションが切れた(AC-000-02、AC-001-07) */
         Unauthenticated: {
             headers: {
@@ -1001,6 +1183,8 @@ export interface components {
         TeamId: string;
         /** @description チームのメンバーのID */
         MembershipId: number;
+        /** @description お知らせのID */
+        NoticeId: number;
         /** @description 選手のID */
         PlayerId: number;
         /** @description 参加申請のID */
@@ -1460,6 +1644,225 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listNotices: {
+        parameters: {
+            query?: {
+                /** @description このお知らせより古いものを返す */
+                before?: number;
+            };
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description お知らせ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyNoticeList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    createNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoticeInput"];
+            };
+        };
+        responses: {
+            /** @description 作った */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    countNoticeRecipients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    target: components["schemas"]["NoticeTargetInput"];
+                    /** @description 編集する予約中のお知らせ */
+                    notice_id?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description 人数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listScheduledNotices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 予約中のお知らせ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description お知らせ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    cancelScheduledNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取り消した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["NoticeNotScheduled"];
+            419: components["responses"]["CsrfExpired"];
+        };
+    };
+    updateScheduledNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+                /** @description お知らせのID */
+                notice: components["parameters"]["NoticeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoticeChanges"];
+            };
+        };
+        responses: {
+            /** @description 編集した */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeEnvelope"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["NoticeNotScheduled"];
+            419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
         };
     };

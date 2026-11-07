@@ -6,7 +6,7 @@ import { routes } from '../routes.tsx'
 
 export type Reply = { status: number; body?: unknown } | 'network-error'
 /** "METHOD /path" -> reply, or a function for replies that depend on the request. */
-export type Handlers = Record<string, Reply | ((body: unknown) => Reply | Promise<Reply>)>
+export type Handlers = Record<string, Reply | ((body: unknown, search: string) => Reply | Promise<Reply>)>
 
 export type Call = { method: string; path: string; search: string; body: unknown; headers: Headers }
 
@@ -53,7 +53,7 @@ export function renderAt(path: string, handlers: Handlers) {
       if (handler === undefined) {
         throw new Error(`Unexpected request: ${key}`)
       }
-      const reply = typeof handler === 'function' ? await handler(body) : handler
+      const reply = typeof handler === 'function' ? await handler(body, url.search) : handler
       if (reply === 'network-error') {
         throw new TypeError('Failed to fetch')
       }
@@ -82,6 +82,8 @@ export function permissions(on: Partial<Team['permissions']> = {}): Team['permis
     manage_roles: false,
     remove_members: false,
     view_audit_logs: false,
+    create_notices: false,
+    manage_all_notices: false,
     ...on,
   }
 }
@@ -103,6 +105,8 @@ export const team = (overrides: Partial<Team> = {}): Team => ({
     manage_roles: true,
     remove_members: true,
     view_audit_logs: true,
+    create_notices: true,
+    manage_all_notices: true,
   }),
   ...overrides,
 })
