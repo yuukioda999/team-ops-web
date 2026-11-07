@@ -22,6 +22,8 @@ const notice = (overrides: Partial<Notice> = {}): Notice => ({
   published_at: '2026-11-07T23:00:00+00:00',
   recipient_count: 12,
   author_display_name: '代表 太郎',
+  unread: false,
+  mine: false,
   ...overrides,
 })
 

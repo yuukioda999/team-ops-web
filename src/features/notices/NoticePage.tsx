@@ -8,7 +8,7 @@ import { Loading } from '../auth/guards.tsx'
 import { useMe } from '../auth/session-context.ts'
 import { TeamPageGate } from '../invitations/TeamPageGate.tsx'
 import { Linkified } from './Linkified.tsx'
-import { formatDateTime, targetLabel } from './notice-format.ts'
+import { canViewStatus, formatDateTime, targetLabel } from './notice-format.ts'
 
 /** お知らせ1件。宛先でなければ見つからない表示(AC-005-15・16) */
 export function NoticePage() {
@@ -67,6 +67,11 @@ function NoticeDetail({ team, noticeId }: { team: Team; noticeId: number }) {
           <article className="sheet" aria-label="本文">
             <Linkified text={notice.body} />
           </article>
+          {canViewStatus(team, notice) && (
+            <Link to={`/teams/${team.id}/notices/${notice.id}/status`} className="button button--secondary">
+              既読・配信状況を見る
+            </Link>
+          )}
         </>
       )}
       <Link to={`/teams/${team.id}/notices`} className="text-link">
