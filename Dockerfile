@@ -20,6 +20,9 @@ RUN npm run build
 # published as nginx/nginx-unprivileged; nginxinc/nginx-unprivileged is the old name.
 FROM nginx/nginx-unprivileged:1.30-alpine AS prod
 ENV API_UPSTREAM=http://api:8000
+# The proxy in front (Caddy, ADR-0022) whose X-Forwarded-For is trusted for the client IP.
+# The default trusts nothing outside this container, so a client cannot set its own IP
+ENV REAL_IP_FROM=127.0.0.1/32
 COPY deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
