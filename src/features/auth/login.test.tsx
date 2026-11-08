@@ -92,7 +92,9 @@ describe('ログイン用リンクの要求', () => {
   it('AC-001-07 explains that the session ended', async () => {
     renderAt('/login?expired=1', { 'GET /api/me': signedOut })
 
-    expect(await screen.findByRole('status')).toHaveTextContent('ログインの有効期限が切れました')
+    // デモモードかを確かめている間は「読み込んでいます」(status)が出るので、文言で探してから役割を確かめる
+    const notice = await screen.findByText(/ログインの有効期限が切れました/)
+    expect(notice.closest('[role="status"]')).not.toBeNull()
   })
 })
 

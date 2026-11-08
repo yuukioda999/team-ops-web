@@ -98,10 +98,16 @@ const networkFailure: Middleware = {
 }
 
 const sessionExpiry: Middleware = {
-  onResponse({ response, request }) {
+  async onResponse({ response, request }) {
     const path = new URL(request.url, window.location.origin).pathname
     if (response.status === 401 && !path.startsWith('/api/auth/')) {
-      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
+      // デモチームが期限切れで消えたときは、理由を付けて知らせる(AC-007-08)
+      const body: unknown = await response
+        .clone()
+        .json()
+        .catch(() => null)
+      const reason = typeof body === 'object' && body !== null && 'reason' in body ? body.reason : null
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { demo: reason === 'demo_expired' } }))
     }
     return response
   },

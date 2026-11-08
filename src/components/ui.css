@@ -793,3 +793,132 @@
   font-size: 13px;
   color: var(--color-unread);
 }
+
+/* Demo role choices (AC-007-01): one per row, with what the role can do */
+.choices:has(.choice--described) {
+  grid-template-columns: 1fr;
+}
+.choice--described {
+  justify-content: flex-start;
+  text-align: left;
+  padding: 10px 14px;
+}
+.choice--described > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.choice__note {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-ink-muted);
+}
+.choice:has(input:checked) .choice__note {
+  color: var(--color-on-panel-muted);
+}
+
+/* Demo banner (AC-007-04, 05): a teal ribbon above every page while in a demo team */
+.demo-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.demo-banner__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.demo-banner__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.demo-banner__label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.demo-banner__select,
+.demo-banner__button {
+  min-height: var(--tap-target);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-on-accent);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 10px;
+}
+.demo-banner__select {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.demo-banner__button {
+  background: var(--color-on-accent);
+  color: var(--color-surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.demo-banner__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.demo-banner__select:focus-visible,
+.demo-banner__button:focus-visible,
+.demo-banner__link:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+.demo-banner__link {
+  margin-left: auto;
+  min-height: var(--tap-target);
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+.demo-banner__error {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Sent mails in a demo team (AC-007-12) */
+.mail-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mail {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.mail__subject {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.mail__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+.mail__body {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

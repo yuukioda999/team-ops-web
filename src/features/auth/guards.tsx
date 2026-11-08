@@ -41,7 +41,7 @@ export function RequireSignedIn({ children, allowIncomplete = false }: { childre
   }
   if (state.status === 'signed-out') {
     saveReturnTo(location.pathname + location.search)
-    return <Navigate to={state.expired ? '/login?expired=1' : '/login'} replace />
+    return <Navigate to={state.expired === 'demo' ? '/login?expired=demo' : state.expired ? '/login?expired=1' : '/login'} replace />
   }
   // Until the display name is entered, registration is not complete (AC-001-08)
   if (!allowIncomplete && state.me.needs_display_name) {

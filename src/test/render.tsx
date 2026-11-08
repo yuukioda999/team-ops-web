@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { vi } from 'vitest'
+import { forgetDemoMode } from '../features/demo/demo-mode.ts'
 import type { Me, Team } from '../api/client.ts'
 import { routes } from '../routes.tsx'
 
@@ -29,8 +30,11 @@ export function parseMultipart(text: string, contentType: string): Record<string
  * Renders the app at a path with a fake API. Unknown requests fail the test.
  * Returns the list of calls the screen made.
  */
-export function renderAt(path: string, handlers: Handlers) {
+export function renderAt(path: string, given: Handlers) {
   const calls: Call[] = []
+  // デモモードは、テストが指定しなければ無効(GET /api/demo が 404、AC-007-17)。覚えた答えはテストごとに消す
+  forgetDemoMode()
+  const handlers: Handlers = { 'GET /api/demo': { status: 404, body: { message: '見つかりません' } }, ...given }
   document.cookie = 'XSRF-TOKEN=test-xsrf-token; path=/'
 
   vi.stubGlobal(
@@ -116,6 +120,7 @@ export const me = (overrides: Partial<Me> = {}): Me => ({
   display_name: '小田 裕貴',
   needs_display_name: false,
   email_undeliverable: false,
+  demo_team_id: null,
   teams: [],
   join_requests: [],
   ...overrides,

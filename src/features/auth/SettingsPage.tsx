@@ -105,34 +105,44 @@ export function SettingsPage() {
         </button>
       </form>
 
-      <form ref={emailForm} className="sheet" onSubmit={(e) => void requestEmailChange(e)} noValidate aria-labelledby="email-title">
-        <h2 id="email-title" className="sheet__title">
-          メールアドレスの変更
-        </h2>
-        <p className="sheet__text">
-          今のメールアドレス:<strong>{me.email}</strong>
-          <br />
-          新しいメールアドレスに確認メールを送ります。メールのリンクを開くまでは、今のメールアドレスのままです。
-        </p>
-        {emailSentTo !== null && (
-          <Alert tone="info">
-            {emailSentTo} に確認メールを送りました。15分以内に、メールのリンクをこの端末かログインした端末で開いてください。
-          </Alert>
-        )}
-        <TextField
-          label="新しいメールアドレス"
-          type="email"
-          name="new_email"
-          autoComplete="email"
-          inputMode="email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          error={emailError}
-        />
-        <button type="submit" className="button button--primary" disabled={busy === 'email'}>
-          {busy === 'email' ? '送信しています' : '確認メールを送る'}
-        </button>
-      </form>
+      {me.demo_team_id !== null ? (
+        // デモではメールアドレスを変えられない(AC-007-15)
+        <section className="sheet" aria-labelledby="email-title">
+          <h2 id="email-title" className="sheet__title">
+            メールアドレスの変更
+          </h2>
+          <p className="sheet__text">デモでは使えません。デモのメールアドレスは、外部に届かない架空のものです。</p>
+        </section>
+      ) : (
+        <form ref={emailForm} className="sheet" onSubmit={(e) => void requestEmailChange(e)} noValidate aria-labelledby="email-title">
+          <h2 id="email-title" className="sheet__title">
+            メールアドレスの変更
+          </h2>
+          <p className="sheet__text">
+            今のメールアドレス:<strong>{me.email}</strong>
+            <br />
+            新しいメールアドレスに確認メールを送ります。メールのリンクを開くまでは、今のメールアドレスのままです。
+          </p>
+          {emailSentTo !== null && (
+            <Alert tone="info">
+              {emailSentTo} に確認メールを送りました。15分以内に、メールのリンクをこの端末かログインした端末で開いてください。
+            </Alert>
+          )}
+          <TextField
+            label="新しいメールアドレス"
+            type="email"
+            name="new_email"
+            autoComplete="email"
+            inputMode="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            error={emailError}
+          />
+          <button type="submit" className="button button--primary" disabled={busy === 'email'}>
+            {busy === 'email' ? '送信しています' : '確認メールを送る'}
+          </button>
+        </form>
+      )}
 
       <section className="sheet" aria-labelledby="logout-title">
         <h2 id="logout-title" className="sheet__title">

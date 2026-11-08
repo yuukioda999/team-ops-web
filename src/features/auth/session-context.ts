@@ -3,7 +3,8 @@ import { api, type Me } from '../../api/client.ts'
 
 export type SessionState =
   | { status: 'loading' }
-  | { status: 'signed-out'; expired: boolean }
+  /** expired:'demo' はデモチームが期限切れで消えた(AC-007-08) */
+  | { status: 'signed-out'; expired: boolean | 'demo' }
   | { status: 'signed-in'; me: Me }
   /** The API could not be reached or failed. Not the same as being logged out. */
   | { status: 'unavailable' }
@@ -34,9 +35,10 @@ export function loadSession(): Promise<SessionState> {
 }
 
 async function fetchSession(): Promise<SessionState> {
-  const { data, response } = await api.GET('/api/me')
+  const { data, error, response } = await api.GET('/api/me')
   if (data !== undefined) return { status: 'signed-in', me: data }
-  return response.status === 401 ? { status: 'signed-out', expired: false } : { status: 'unavailable' }
+  if (response.status !== 401) return { status: 'unavailable' }
+  return { status: 'signed-out', expired: (error as { reason?: string } | undefined)?.reason === 'demo_expired' ? 'demo' : false }
 }
 
 /**

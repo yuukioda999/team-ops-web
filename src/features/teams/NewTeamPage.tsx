@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { api, errorMessage, fieldErrors, withCsrfRetry, type Sport } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
+import { Panel } from '../../components/Panel.tsx'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { useMe, useSession } from '../auth/session-context.ts'
@@ -39,6 +40,20 @@ export function NewTeamPage() {
     } else {
       setError(errorMessage(body))
     }
+  }
+
+  // デモではチームを作れない(AC-007-15)
+  if (me.demo_team_id !== null) {
+    return (
+      <PageFrame title="チームを作成" pageTitle="チームを作成" signedInAs={me.email} account>
+        <Panel tag="チーム" title="デモでは使えません">
+          <p className="panel__text">デモでは新しいチームを作れません。用意したデモチームで、すべての機能を試せます。</p>
+        </Panel>
+        <Link to={`/teams/${me.demo_team_id}`} className="text-link">
+          デモチームに戻る
+        </Link>
+      </PageFrame>
+    )
   }
 
   return (
