@@ -12,11 +12,17 @@ server {
     server_tokens off;
     access_log /dev/stdout path_only;
 
+    # Behind Caddy (ADR-0022), take the client IP from its X-Forwarded-For. Only the address in
+    # ${REAL_IP_FROM} is trusted, so a client cannot forge its IP for the API's rate limits
+    set_real_ip_from ${REAL_IP_FROM};
+    real_ip_header X-Forwarded-For;
+
     location /api/ {
         include /etc/nginx/snippets/security-headers.conf;
         proxy_pass ${API_UPSTREAM};
         proxy_set_header Host $host;
-        # Overwrite (do not append) so a client cannot forge its IP for the API's rate limits
+        # Overwrite (do not append) so a client cannot forge its IP for the API's rate limits.
+        # $remote_addr is the client IP taken from a trusted proxy above, or the connecting address
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         # The API trusts only For and Proto, but set the rest too so a client's own values never pass through
