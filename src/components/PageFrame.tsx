@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Crest } from './Crest.tsx'
+import { DemoBanner } from './DemoBanner.tsx'
 import { EmailUndeliverableAlert } from './EmailUndeliverableAlert.tsx'
 
 type Props = {
@@ -46,6 +47,7 @@ export function PageFrame({ title, pageTitle, home = '/', signedInAs, account = 
         </p>
       )}
       <main className="stack">
+        {signedInAs !== undefined && <DemoBanner />}
         {signedInAs !== undefined && <EmailUndeliverableAlert />}
         {children}
       </main>

@@ -773,6 +773,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * デモモードが有効か
+         * @description 画面が「デモとしてログイン」を出すかを決めるのに使います(AC-007-01)。デモモードでなければ404です(AC-007-17)。
+         */
+        get: operations["getDemo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * デモとしてログインする
+         * @description 訪問者専用のデモチームを作り、選んだ役割のデモユーザーとしてログインします(AC-007-02)。デモチームは24時間で消えます。
+         *     IP ごとに1時間20回まで(AC-007-09)。存在するデモチームが500以上なら 503 です(AC-007-10)。デモモードでなければ404です。
+         */
+        post: operations["createDemoSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/sessions/switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * デモの役割を切り替える
+         * @description 自分が作ったデモチームの、別の役割のデモユーザーとしてログインし直します。データはそのままです(AC-007-05)。
+         */
+        post: operations["switchDemoRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/demo/mails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * デモチームから送られたメール
+         * @description デモチームのメンバーだけ。このデモチームから送られ、メールの受け止め先(Mailpit)に届いたメールを新しい順に最大30通返します(AC-007-12)。
+         *     ほかの訪問者のメールは返しません。デモモードでない、デモチームでなければ404です。
+         */
+        get: operations["listDemoMails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team}/players/import/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 取り込みを試すためのサンプル CSV
+         * @description 代表・役員だけ。架空の選手20人分です(AC-007-16)。UTF-8(BOM付き)です。
+         */
+        get: operations["getPlayerImportSample"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{team}/players/import/preview": {
         parameters: {
             query?: never;
@@ -896,6 +1004,11 @@ export interface components {
         Message: {
             /** @description 利用者向けの文言 */
             message: string;
+            /**
+             * @description 画面が表示を変えるための理由(demo_mode:デモ環境では使えない、demo_expired:デモの有効期限が切れた)
+             * @enum {string}
+             */
+            reason?: "demo_mode" | "demo_expired";
         };
         ValidationError: {
             message: string;
@@ -1110,6 +1223,8 @@ export interface components {
             needs_display_name: boolean;
             /** @description お知らせのメールがアドレスの問題で届かなかった。アドレスを変えるまでお知らせのメールを送らない(AC-006-16・17) */
             email_undeliverable: boolean;
+            /** @description デモユーザーなら属するデモチーム(007)。通常のユーザーは null */
+            demo_team_id: string | null;
             teams: components["schemas"]["TeamSummary"][];
             /** @description 自分の参加申請のうち、承認待ちと承認されなかったもの(AC-002-09・13)。承認されたものは teams に入る */
             join_requests: components["schemas"]["MyJoinRequest"][];
@@ -1117,6 +1232,18 @@ export interface components {
         LoginResult: components["schemas"]["Me"] & {
             /** @description ログイン後に進む先(AC-001-19)。ログイン用リンクの要求で受け付けた値 */
             return_to: string | null;
+        };
+        DemoRoleInput: {
+            /** @enum {string} */
+            role: "representative" | "officer" | "coach" | "parent";
+        };
+        DemoLoginResult: components["schemas"]["Me"];
+        DemoMail: {
+            subject: string;
+            to: string[];
+            /** @description 受け止め先に届いた日時 */
+            sent_at: string;
+            text: string;
         };
         TeamSummary: {
             id: string;
@@ -1320,6 +1447,15 @@ export interface components {
                 "application/json": components["schemas"]["Message"];
             };
         };
+        /** @description デモ環境では使えない操作(AC-007-03・14・15)。`reason` は demo_mode */
+        DemoMode: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Message"];
+            };
+        };
         /** @description この操作の権限がない(代表・役員だけの操作など。AC-002-04) */
         Forbidden: {
             headers: {
@@ -1443,6 +1579,7 @@ export interface operations {
                     "application/json": components["schemas"]["Message"];
                 };
             };
+            403: components["responses"]["DemoMode"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
@@ -1470,6 +1607,7 @@ export interface operations {
                     "application/json": components["schemas"]["LoginResult"];
                 };
             };
+            403: components["responses"]["DemoMode"];
             410: components["responses"]["LinkExpired"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
@@ -1567,6 +1705,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["DemoMode"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
             429: components["responses"]["TooManyRequests"];
@@ -1595,6 +1734,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["DemoMode"];
             /** @description 確認の間に、新しいアドレスが別のアカウントで使われた(AC-001-17) */
             409: {
                 headers: {
@@ -1633,6 +1773,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["DemoMode"];
             419: components["responses"]["CsrfExpired"];
             422: components["responses"]["ValidationFailed"];
         };
@@ -2624,6 +2765,159 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description デモモードが有効 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                        /** @description デモチームが消えるまでの時間 */
+                        lifetime_hours: number;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createDemoSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoRoleInput"];
+            };
+        };
+        responses: {
+            /** @description ログインした */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoLoginResult"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+            429: components["responses"]["TooManyRequests"];
+            /** @description デモが混み合っている */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    switchDemoRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoRoleInput"];
+            };
+        };
+        responses: {
+            /** @description 切り替えた */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoLoginResult"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            419: components["responses"]["CsrfExpired"];
+            422: components["responses"]["ValidationFailed"];
+        };
+    };
+    listDemoMails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description メール */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mails: components["schemas"]["DemoMail"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            /** @description メールの受け止め先につながらない */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    getPlayerImportSample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description チームID(ULID) */
+                team: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description サンプル */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     previewPlayerImport: {
         parameters: {
             query?: never;
@@ -2815,6 +3109,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["DemoMode"];
             /** @description すでにこのチームのメンバー */
             409: {
                 headers: {

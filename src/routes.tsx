@@ -8,6 +8,7 @@ import { VerifyLoginPage } from './features/auth/VerifyLoginPage.tsx'
 import { WelcomePage } from './features/auth/WelcomePage.tsx'
 import { InvitationPage } from './features/invitations/InvitationPage.tsx'
 import { JoinPage } from './features/invitations/JoinPage.tsx'
+import { DemoMailsPage } from './features/demo/DemoMailsPage.tsx'
 import { JoinRequestsPage } from './features/invitations/JoinRequestsPage.tsx'
 import { AuditLogPage } from './features/members/AuditLogPage.tsx'
 import { MemberPage } from './features/members/MemberPage.tsx'
@@ -59,6 +60,8 @@ export const routes: RouteObject[] = [
       { path: 'teams/:teamId/players/new', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players/import', element: <RequireSignedIn><ImportPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players/:playerId', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
+      // Mail sent from a demo team (AC-007-12)
+      { path: 'teams/:teamId/demo/mails', element: <RequireSignedIn><DemoMailsPage /></RequireSignedIn> },
       // Opened from an invitation link, logged in or not (AC-002-05)
       { path: 'join', element: <JoinPage /> },
       { path: 'settings', element: <RequireSignedIn><SettingsPage /></RequireSignedIn> },

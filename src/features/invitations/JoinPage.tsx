@@ -4,6 +4,7 @@ import { api, errorMessage, fieldErrors, withCsrfRetry, type InvitationPreview }
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
+import { useDemoMode } from '../demo/demo-mode.ts'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { Loading, Unavailable } from '../auth/guards.tsx'
@@ -21,6 +22,7 @@ type Preview = { status: 'loading' } | { status: 'invalid'; message: string } | 
  * リンクのトークンは読んだらすぐ URL から消す(001 の D7 と同じ)。
  */
 export function JoinPage() {
+  const demo = useDemoMode()
   const token = useLinkToken()
   const { state } = useSession()
   const [preview, setPreview] = useState<Preview>(token === '' ? { status: 'invalid', message: INVALID } : { status: 'loading' })
@@ -42,7 +44,7 @@ export function JoinPage() {
     }
   }, [token, state.status, signedIn])
 
-  if (state.status === 'loading' || preview.status === 'loading') return <Loading />
+  if (state.status === 'loading' || preview.status === 'loading' || demo === null) return <Loading />
   if (state.status === 'unavailable') return <Unavailable />
 
   if (preview.status === 'invalid') {
@@ -56,6 +58,19 @@ export function JoinPage() {
   }
 
   const { team, relation, team_id: teamId } = preview.preview
+
+  // デモでは招待リンクから参加できない(参加にはメールでのログインが要る、AC-007-14)
+  if (demo && relation !== 'member') {
+    return (
+      <PageFrame title="チーム運営" pageTitle="デモでは参加できません" signedInAs={signedIn ? state.me.email : undefined}>
+        <Panel tag="招待" meta={SPORT_LABELS[team.sport]} title={team.name}>
+          <p className="panel__text">
+            デモでは、招待リンクからチームに参加できません。参加にはメールアドレスでのログインが必要なためです。承認の操作は、デモチームの「参加申請」に用意した申請で試せます。
+          </p>
+        </Panel>
+      </PageFrame>
+    )
+  }
 
   // Already a member: go straight to the team (AC-002-08)
   if (relation === 'member' && teamId !== null) {

@@ -17,7 +17,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // A 401 from any API call means the session has ended (AC-001-07)
   useEffect(() => {
-    const onExpired = () => setState((s) => (s.status === 'signed-in' ? { status: 'signed-out', expired: true } : s))
+    const onExpired = (event: Event) => {
+      const demo = (event as CustomEvent<{ demo?: boolean } | null>).detail?.demo === true
+      setState((s) => (s.status === 'signed-in' ? { status: 'signed-out', expired: demo ? 'demo' : true } : s))
+    }
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
   }, [])

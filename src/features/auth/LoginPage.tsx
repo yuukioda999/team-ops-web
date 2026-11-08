@@ -1,5 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
+import { DemoLogin } from '../demo/DemoLogin.tsx'
+import { useDemoMode } from '../demo/demo-mode.ts'
+import { Loading } from './guards.tsx'
 import { api, errorMessage, fieldErrors, withCsrfRetry } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
@@ -12,9 +15,24 @@ const APP_NAME = 'チーム運営'
 
 /**
  * ログイン用リンクを要求する(AC-001-01・02・05)。登録済みかどうかで表示は変えない。
+ * デモモードでは、メールアドレスの入力欄を出さず、デモとしてログインだけを出す(AC-007-01・03)。
  */
 export function LoginPage() {
   const [params] = useSearchParams()
+  const demo = useDemoMode()
+  if (demo === null) return <Loading />
+  if (demo) {
+    return (
+      <PageFrame title={APP_NAME} pageTitle="デモとしてログイン">
+        {/* デモモードのセッションはすべてデモなので、ふつうのログイン切れ(expired=1)も期限切れとして伝える(AC-007-08) */}
+        <DemoLogin expired={params.get('expired') === 'demo' || params.get('expired') === '1'} />
+      </PageFrame>
+    )
+  }
+  return <EmailLogin expired={params.get('expired') === '1'} />
+}
+
+function EmailLogin({ expired }: { expired: boolean }) {
   const [email, setEmail] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -78,7 +96,7 @@ export function LoginPage() {
           入力したメールアドレスに、ログイン用のリンクを送ります。はじめての方も、同じ手順で登録できます。
         </p>
       </Panel>
-      {params.get('expired') === '1' && <Alert tone="info">ログインの有効期限が切れました。もう一度ログインしてください。</Alert>}
+      {expired && <Alert tone="info">ログインの有効期限が切れました。もう一度ログインしてください。</Alert>}
       {error !== null && <Alert tone="error">{error}</Alert>}
       <form ref={form} className="sheet" onSubmit={(e) => void send(e)} noValidate>
         <TextField

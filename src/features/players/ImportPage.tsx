@@ -99,6 +99,9 @@ function Import({ team }: { team: Team }) {
         <a href={`/api/teams/${team.id}/players/import/template`} download="players-template.csv" className="button button--secondary">
           テンプレートをダウンロード
         </a>
+        <a href={`/api/teams/${team.id}/players/import/sample`} download="players-sample.csv" className="text-link">
+          試すためのサンプル(架空の選手20人)をダウンロード
+        </a>
       </section>
       <form className="sheet" onSubmit={(e) => void check(e)} noValidate aria-labelledby="file-title">
         <h2 id="file-title" className="sheet__title">
