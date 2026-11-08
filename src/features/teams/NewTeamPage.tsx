@@ -7,11 +7,14 @@ import { Panel } from '../../components/Panel.tsx'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
 import { useMe, useSession } from '../auth/session-context.ts'
+import { useDemoMode } from '../demo/demo-mode.ts'
 import { SPORT_LABELS, SPORTS } from './sports.ts'
 
 /** チームの作成。作った人が代表になる(AC-001-11・12)。 */
 export function NewTeamPage() {
   const me = useMe()
+  // デモモードかどうかで止める(ADR-0021)。デモユーザーならデモモードなので、分かるまでも出さない
+  const demo = useDemoMode() === true || me.demo_team_id !== null
   const { refresh } = useSession()
   const navigate = useNavigate()
   const [name, setName] = useState('')
@@ -43,13 +46,13 @@ export function NewTeamPage() {
   }
 
   // デモではチームを作れない(AC-007-15)
-  if (me.demo_team_id !== null) {
+  if (demo) {
     return (
       <PageFrame title="チームを作成" pageTitle="チームを作成" signedInAs={me.email} account>
         <Panel tag="チーム" title="デモでは使えません">
           <p className="panel__text">デモでは新しいチームを作れません。用意したデモチームで、すべての機能を試せます。</p>
         </Panel>
-        <Link to={`/teams/${me.demo_team_id}`} className="text-link">
+        <Link to={me.demo_team_id !== null ? `/teams/${me.demo_team_id}` : '/'} className="text-link">
           デモチームに戻る
         </Link>
       </PageFrame>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { api, errorMessage, type Team } from '../../api/client.ts'
+import { api, errorMessage, type DemoMail, type Team } from '../../api/client.ts'
 import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { Panel } from '../../components/Panel.tsx'
@@ -8,8 +8,6 @@ import { Loading } from '../auth/guards.tsx'
 import { useMe } from '../auth/session-context.ts'
 import { TeamPageGate } from '../invitations/TeamPageGate.tsx'
 import { formatDateTime } from '../notices/notice-format.ts'
-
-type DemoMail = { subject: string; to: string[]; sent_at: string; text: string }
 
 /**
  * デモチームから送られたメール(AC-007-12)。メールの受け止め先(Mailpit)に届いたものを、新しい順に出す。

@@ -24,7 +24,8 @@ export function LoginPage() {
   if (demo) {
     return (
       <PageFrame title={APP_NAME} pageTitle="デモとしてログイン">
-        <DemoLogin expired={params.get('expired') === 'demo'} />
+        {/* デモモードのセッションはすべてデモなので、ふつうのログイン切れ(expired=1)も期限切れとして伝える(AC-007-08) */}
+        <DemoLogin expired={params.get('expired') === 'demo' || params.get('expired') === '1'} />
       </PageFrame>
     )
   }

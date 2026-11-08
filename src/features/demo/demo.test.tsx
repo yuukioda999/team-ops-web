@@ -56,6 +56,34 @@ describe('デモとしてログイン', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('デモが混み合っています。時間をおいてもう一度お試しください。')
   })
 
+  it('AC-007-09 says when too many demo teams were made from one network', async () => {
+    renderAt('/login', { ...demoOn, 'GET /api/me': signedOut, 'POST /api/demo/sessions': { status: 429, body: { message: '時間をおいてもう一度お試しください' } } })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'デモとしてログイン' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('時間をおいてもう一度お試しください')
+  })
+
+  it('AC-007-08 switching roles after the demo expired returns to the login page with the reason', async () => {
+    const { router } = renderAt(`/teams/${DEMO_ID}`, {
+      ...demoOn,
+      'GET /api/me': demoMe(),
+      ...home(),
+      'POST /api/demo/sessions/switch': { status: 401, body: { message: 'デモの有効期限が切れました', reason: 'demo_expired' } },
+    })
+
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: '役割' }), 'parent')
+    await userEvent.click(screen.getByRole('button', { name: '切り替える' }))
+
+    expect(await screen.findByText('デモの有効期限が切れました。もう一度デモとしてログインしてください。')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+  })
+
+  it('AC-007-08 in demo mode a plain expired login is also told the demo expired', async () => {
+    renderAt('/login?expired=1', { ...demoOn, 'GET /api/me': signedOut })
+
+    expect(await screen.findByText('デモの有効期限が切れました。もう一度デモとしてログインしてください。')).toBeInTheDocument()
+  })
+
   it('AC-007-08 an expired demo session returns to the login page with the reason', async () => {
     const { router } = renderAt(`/teams/${DEMO_ID}`, { ...demoOn, 'GET /api/me': { status: 401, body: { message: 'デモの有効期限が切れました', reason: 'demo_expired' } } })
 
@@ -149,6 +177,20 @@ describe('デモで使えない操作', () => {
 
     expect(await screen.findByText('デモでは使えません。デモのメールアドレスは、外部に届かない架空のものです。')).toBeInTheDocument()
     expect(screen.queryByLabelText('新しいメールアドレス')).not.toBeInTheDocument()
+  })
+
+  it('AC-007-15 in demo mode the email change is not offered even to a session from before', async () => {
+    renderAt('/settings', { ...demoOn, 'GET /api/me': signedIn() })
+
+    expect(await screen.findByText('デモでは使えません。デモのメールアドレスは、外部に届かない架空のものです。')).toBeInTheDocument()
+    expect(screen.queryByLabelText('新しいメールアドレス')).not.toBeInTheDocument()
+  })
+
+  it('AC-007-15 in demo mode a new team cannot be created even by a session from before', async () => {
+    renderAt('/teams/new', { ...demoOn, 'GET /api/me': signedIn() })
+
+    expect(await screen.findByRole('heading', { name: 'デモでは使えません' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('チーム名')).not.toBeInTheDocument()
   })
 
   it('AC-007-15 a new team cannot be created', async () => {

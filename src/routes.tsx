@@ -60,8 +60,9 @@ export const routes: RouteObject[] = [
       { path: 'teams/:teamId/players/new', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players/import', element: <RequireSignedIn><ImportPage /></RequireSignedIn> },
       { path: 'teams/:teamId/players/:playerId', element: <RequireSignedIn><PlayerPage /></RequireSignedIn> },
-      // Opened from an invitation link, logged in or not (AC-002-05)
+      // Mail sent from a demo team (AC-007-12)
       { path: 'teams/:teamId/demo/mails', element: <RequireSignedIn><DemoMailsPage /></RequireSignedIn> },
+      // Opened from an invitation link, logged in or not (AC-002-05)
       { path: 'join', element: <JoinPage /> },
       { path: 'settings', element: <RequireSignedIn><SettingsPage /></RequireSignedIn> },
       { path: 'settings/email/verify', element: <RequireSignedIn><VerifyEmailChangePage /></RequireSignedIn> },

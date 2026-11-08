@@ -5,11 +5,14 @@ import { Alert } from '../../components/Alert.tsx'
 import { PageFrame } from '../../components/PageFrame.tsx'
 import { TextField } from '../../components/TextField.tsx'
 import { useFocusFirstInvalid } from '../../components/use-focus-first-invalid.ts'
+import { useDemoMode } from '../demo/demo-mode.ts'
 import { useMe, useSession } from './session-context.ts'
 
 /** アカウント設定:表示名の変更、メールアドレスの変更、ログアウト(AC-001-06・08・09)。 */
 export function SettingsPage() {
   const me = useMe()
+  // デモモードかどうかで止める(ADR-0021)。デモユーザーならデモモードなので、分かるまでも出さない
+  const demo = useDemoMode() === true || me.demo_team_id !== null
   const { setMe, clear } = useSession()
   const navigate = useNavigate()
 
@@ -105,7 +108,7 @@ export function SettingsPage() {
         </button>
       </form>
 
-      {me.demo_team_id !== null ? (
+      {demo ? (
         // デモではメールアドレスを変えられない(AC-007-15)
         <section className="sheet" aria-labelledby="email-title">
           <h2 id="email-title" className="sheet__title">
