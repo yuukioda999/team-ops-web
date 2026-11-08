@@ -5,6 +5,13 @@
 # in the query string and the next request's Referer still contains it (plan.md D7).
 log_format path_only '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent $request_time';
 
+# Behind Caddy (ADR-0022) the request arrived over HTTPS; pass that on so the API does not take it
+# for plain HTTP. Only https is taken from the header, and only Caddy can reach this port on the server
+map $http_x_forwarded_proto $forwarded_proto {
+    default $scheme;
+    https https;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -24,7 +31,7 @@ server {
         # Overwrite (do not append) so a client cannot forge its IP for the API's rate limits.
         # $remote_addr is the client IP taken from a trusted proxy above, or the connecting address
         proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         # The API trusts only For and Proto, but set the rest too so a client's own values never pass through
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port $server_port;
