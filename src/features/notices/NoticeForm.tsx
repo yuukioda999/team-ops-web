@@ -191,7 +191,7 @@ export function NoticeForm({
             ? `届く人数を数えられませんでした。${shown.message}`
             : noRecipients
               ? '届く人がいません。宛先を選んでください。'
-              : `${shown.count}人に届きます(${mode === 'edit' ? '作成者' : 'あなた'}を含む。同じ人には1通だけ)`}
+              : `${shown.count}人に届きます(${mode === 'edit' ? '作成者' : 'あなた'}を含む。宛先が重なる人は1人と数える)`}
       </p>
       {shown.status === 'failed' && (
         <button type="button" className="button button--secondary" onClick={recount}>
