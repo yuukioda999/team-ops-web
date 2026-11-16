@@ -67,8 +67,8 @@ function NoticeDetail({ team, noticeId }: { team: Team; noticeId: number }) {
           <article className="sheet" aria-label="本文">
             <Linkified text={notice.body} />
           </article>
-          {/* 配信サービスが送信の途中で止まると、メールがまれに2通届く(AC-005-20、team-ops の振り返り 2026-11-16-relay-killed) */}
-          <p className="field__hint">このお知らせのメールは、まれに同じものが2通届くことがあります。内容は同じです。</p>
+          {/* 配信サービスが送信の途中で強制終了されると、メールがまれに2通届く(AC-005-20、team-ops の振り返り 2026-11-16-relay-killed)。本文の一部として読まれないよう、article の外に置く */}
+          <p className="field__hint field__hint--under-sheet">このお知らせのメールは、まれに同じものが2通届くことがあります。内容は同じです。</p>
           {canViewStatus(team, notice) && (
             <Link to={`/teams/${team.id}/notices/${notice.id}/status`} className="button button--secondary">
               既読・配信状況を見る

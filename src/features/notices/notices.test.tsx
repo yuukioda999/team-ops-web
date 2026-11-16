@@ -130,8 +130,11 @@ describe('お知らせ一覧と表示', () => {
       [`GET ${BASE}/notices/7`]: { status: 200, body: { notice: notice() } },
     })
 
-    await screen.findByRole('article', { name: '本文' })
-    expect(screen.getByText('このお知らせのメールは、まれに同じものが2通届くことがあります。内容は同じです。')).toBeInTheDocument()
+    const article = await screen.findByRole('article', { name: '本文' })
+    const note = screen.getByText('このお知らせのメールは、まれに同じものが2通届くことがあります。内容は同じです。')
+    // 本文の下にあり、本文の一部ではない
+    expect(article.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(article).not.toContainElement(note)
   })
 
   it('AC-005-15 a notice not addressed to me is shown as not found', async () => {
@@ -157,7 +160,7 @@ describe('お知らせを書く', () => {
   it('AC-005-02 shows how many people it reaches, and cannot send to nobody', async () => {
     const { calls } = page()
 
-    expect(await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(await screen.findByText('5人に届きます(あなたを含む。宛先が重なる人も1人と数えます)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '5人に送信する' })).toBeEnabled()
 
     await userEvent.click(screen.getByRole('radio', { name: '学年で選ぶ' }))
@@ -165,7 +168,7 @@ describe('お知らせを書く', () => {
     expect(screen.getByRole('button', { name: '送信する' })).toBeDisabled()
 
     await userEvent.click(screen.getByRole('checkbox', { name: '小3' }))
-    await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')
+    await screen.findByText('5人に届きます(あなたを含む。宛先が重なる人も1人と数えます)')
     expect(calls.filter((c) => c.path === `${BASE}/notices/recipient-count`).at(-1)?.body).toEqual({ target: { type: 'grades', values: ['e3'] } })
   })
 
@@ -181,7 +184,7 @@ describe('お知らせを書く', () => {
 
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'もう一度数える' }))
-    expect(await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(await screen.findByText('5人に届きます(あなたを含む。宛先が重なる人も1人と数えます)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '5人に送信する' })).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'もう一度数える' })).not.toBeInTheDocument()
   })
@@ -199,7 +202,7 @@ describe('お知らせを書く', () => {
       },
     })
 
-    expect(await screen.findByText('5人に届きます(あなたを含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(await screen.findByText('5人に届きます(あなたを含む。宛先が重なる人も1人と数えます)')).toBeInTheDocument()
     expect(calls.filter((c) => c.path === `${BASE}/notices/recipient-count`)).toHaveLength(2)
   })
 
@@ -311,7 +314,7 @@ describe('予約中のお知らせ', () => {
     expect(title).toHaveValue('翌朝の連絡')
     // UTC の 22:00 は、日本時間の翌日 7:00 として出す
     expect(screen.getByLabelText('予約日時')).toHaveValue('2026-11-09T07:00')
-    expect(await screen.findByText('8人に届きます(作成者を含む。同じ人には1通だけ)')).toBeInTheDocument()
+    expect(await screen.findByText('8人に届きます(作成者を含む。宛先が重なる人も1人と数えます)')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '小3' })).toBeChecked()
     await userEvent.clear(title)
     await userEvent.type(title, '時間変更')
