@@ -123,6 +123,17 @@ describe('お知らせ一覧と表示', () => {
     expect(screen.getByText(/代表 太郎さんから \/ 宛先:全員/)).toBeInTheDocument()
   })
 
+  it('AC-005-20 says under the body that the mail may rarely arrive twice', async () => {
+    renderAt(`/teams/${U10.id}/notices/7`, {
+      'GET /api/me': signedIn({ teams: [parentTeam] }),
+      [`GET ${BASE}`]: { status: 200, body: parentTeam },
+      [`GET ${BASE}/notices/7`]: { status: 200, body: { notice: notice() } },
+    })
+
+    await screen.findByRole('article', { name: '本文' })
+    expect(screen.getByText('このお知らせのメールは、まれに同じものが2通届くことがあります。内容は同じです。')).toBeInTheDocument()
+  })
+
   it('AC-005-15 a notice not addressed to me is shown as not found', async () => {
     renderAt(`/teams/${U10.id}/notices/9`, {
       'GET /api/me': signedIn({ teams: [parentTeam] }),
