@@ -213,7 +213,8 @@
   font-size: 13px;
   color: var(--color-ink-muted);
 }
-/* A hint right under a sheet, lined up with the sheet's text */
+/* A hint right under a sheet, lined up with the sheet's text. .field__hint is also used for short
+   notes outside forms (the status and member pages, the notice page) */
 .field__hint--under-sheet {
   padding: 0 16px;
 }
